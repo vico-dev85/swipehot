@@ -1,18 +1,22 @@
-# xcam.vip — Live Cam Roulette
+# xcam.vip — Live Cam Roulette Platform
 
 ## What This Is
 
-A TikTok-style live cam roulette hosted on **xcam.vip** (WordPress, dedicated server).
+A TikTok-style live cam roulette on **xcam.vip** (self-hosted, dedicated server).
 Shows random live Chaturbate performers one at a time, full-screen, no blur, muted.
 Users swipe through performers fast. When they want to engage (chat, sound, enter the
 room, get notified) they click through to **www.xcam.vip**, a Chaturbate white label
 owned by the same person. Revenue comes from Chaturbate affiliate commissions on signups.
 
+The platform is custom-built — no WordPress, no CMS framework. A TypeScript monorepo
+with Fastify API, vanilla JS frontend, React admin dashboard, and a CLI content engine.
+All served by nginx on a dedicated server.
+
 ## Two Domains (Same Owner)
 
 | Domain | What it is | Role |
 |---|---|---|
-| **xcam.vip** | WordPress site on dedicated server | Hosts the roulette app, backend API, future content pages |
+| **xcam.vip** | Custom platform on dedicated server | Roulette app, API, content pages, dashboard |
 | **www.xcam.vip** | Chaturbate white label | Registration, performer rooms, embeds — looks like one platform to users |
 
 Users never see chaturbate.com. The only direct Chaturbate call is the backend
@@ -126,6 +130,147 @@ GET https://chaturbate.com/api/public/affiliates/onlinerooms/
 
 ---
 
+## Technology Stack
+
+| Layer | Technology | Why |
+|---|---|---|
+| **Frontend (roulette)** | Vanilla HTML/CSS/JS | No build step, fast, cacheable, served as static files |
+| **Backend API** | Node.js + Fastify (TypeScript) | Fast, schema validation, modern async, shared language with content engine |
+| **Database** | MySQL | Already running on server, sufficient for all needs |
+| **Cache** | Redis | Pool data, sessions, config — survives process restarts |
+| **Scheduled Jobs** | node-cron (in-process) | Pool refresh every 60s, daily status checks |
+| **Process Manager** | PM2 | Auto-restart, clustering, log management, zero-downtime deploys |
+| **Web Server** | nginx | Reverse proxy to API, serves static files and pre-rendered content pages |
+| **Dashboard** | React SPA (Vite + TypeScript) | Lightweight admin panel, talks to API, behind auth |
+| **Content Engine** | TypeScript CLI (same monorepo) | Generates content via Claude API, renders HTML, shares types with API |
+
+### Server Requirements
+- Node.js 20+ LTS
+- MySQL 8+
+- Redis 7+
+- nginx
+- PM2 (`npm install -g pm2`)
+
+---
+
+## Monorepo Structure
+
+```
+xcamvip/
+├── CLAUDE.md                       ← this file (project brain)
+├── package.json                    ← npm workspaces root
+├── tsconfig.base.json              ← shared TypeScript config
+│
+├── packages/
+│   ├── frontend/                   ← roulette app (vanilla JS, no build step)
+│   │   ├── index.html
+│   │   ├── css/
+│   │   │   ├── base.css            ← reset, layout, typography
+│   │   │   ├── header.css          ← transparent header, filter, online count
+│   │   │   ├── video.css           ← video area, iframes, crop
+│   │   │   ├── controls.css        ← NEXT button, swipe hints
+│   │   │   ├── overlays.css        ← start screen, transition indicator
+│   │   │   ├── modals.css          ← CTA modal, promo modals
+│   │   │   ├── camera.css          ← camera promo box
+│   │   │   └── theme.css           ← CSS custom properties (colors, easy to swap)
+│   │   └── js/
+│   │       ├── config.js           ← API endpoints, affiliate IDs, all constants
+│   │       ├── app.js              ← init, start screen, main lifecycle
+│   │       ├── pool.js             ← fetch performers, preload, dual iframe swap
+│   │       ├── swipe.js            ← touch/swipe gesture handling
+│   │       ├── controls.js         ← NEXT, gender filter, dropdown logic
+│   │       ├── camera.js           ← camera promo box + redirect
+│   │       ├── modals.js           ← CTA modals, room entry
+│   │       ├── online.js           ← real online count with smooth animation
+│   │       ├── crop.js             ← video crop/positioning (CSS object-fit for iframes)
+│   │       ├── brain.js            ← session personalization (tag tracking, scoring)
+│   │       ├── events.js           ← analytics event dispatching
+│   │       └── ab.js               ← A/B test variant assignment
+│   │
+│   ├── api/                        ← backend server (Fastify + TypeScript)
+│   │   ├── src/
+│   │   │   ├── server.ts           ← Fastify app init, plugin registration
+│   │   │   ├── routes/
+│   │   │   │   ├── pool.ts         ← GET /api/pool/next, /api/pool/stats
+│   │   │   │   ├── events.ts       ← POST /api/events
+│   │   │   │   ├── config.ts       ← GET /api/config (public frontend config)
+│   │   │   │   └── admin.ts        ← /api/admin/* (dashboard endpoints, auth required)
+│   │   │   ├── services/
+│   │   │   │   ├── pool-fetcher.ts ← Chaturbate API polling + Redis caching
+│   │   │   │   ├── pool-matcher.ts ← weighted selection, personalization scoring
+│   │   │   │   ├── event-logger.ts ← analytics event storage in MySQL
+│   │   │   │   └── cron.ts         ← node-cron job definitions (pool refresh, status checks)
+│   │   │   └── middleware/
+│   │   │       └── auth.ts         ← dashboard JWT authentication
+│   │   ├── package.json
+│   │   └── tsconfig.json
+│   │
+│   ├── dashboard/                  ← admin CMS (React + Vite + TypeScript)
+│   │   ├── src/
+│   │   │   ├── pages/              ← config, analytics, pools, A/B tests, content engine
+│   │   │   └── components/
+│   │   ├── package.json
+│   │   └── vite.config.ts
+│   │
+│   ├── content-engine/             ← SEO content generator + HTML renderer (TypeScript CLI)
+│   │   ├── src/
+│   │   │   ├── cli/index.ts        ← CLI entry point (seed, generate, check-status, etc.)
+│   │   │   ├── generators/
+│   │   │   │   ├── model-page.ts   ← model page generation pipeline
+│   │   │   │   └── blog-post.ts    ← blog post generation pipeline
+│   │   │   ├── renderer/
+│   │   │   │   └── html.ts         ← renders content to static HTML files
+│   │   │   ├── validators/
+│   │   │   │   └── content.ts      ← quality checks (word count, uniqueness, structure)
+│   │   │   └── seo/
+│   │   │       ├── sitemap.ts      ← sitemap.xml generator
+│   │   │       ├── schema.ts       ← JSON-LD schema markup per page type
+│   │   │       └── meta.ts         ← meta tag generation (title, description, OG, twitter)
+│   │   ├── templates/
+│   │   │   ├── model-page.html     ← HTML template for model pages
+│   │   │   ├── blog-post.html      ← HTML template for blog posts
+│   │   │   └── category-hub.html   ← HTML template for category pages
+│   │   ├── package.json
+│   │   └── tsconfig.json
+│   │
+│   └── shared/                     ← shared types, DB models, utilities
+│       ├── src/
+│       │   ├── types.ts            ← TypeScript interfaces (Performer, Config, Event, etc.)
+│       │   ├── db.ts               ← MySQL connection + query helpers
+│       │   ├── redis.ts            ← Redis connection + cache helpers
+│       │   ├── embed.ts            ← embed URL construction (shared between roulette + content)
+│       │   └── tags.ts             ← tag normalization map
+│       ├── package.json
+│       └── tsconfig.json
+│
+├── public/                         ← nginx document root
+│   ├── (frontend files copied/symlinked here)
+│   ├── models/                     ← pre-rendered model page HTML files
+│   │   └── miarose/index.html
+│   ├── blog/                       ← pre-rendered blog post HTML files
+│   ├── sitemap.xml                 ← auto-generated
+│   └── robots.txt
+│
+├── database/
+│   └── migrations/                 ← SQL migration files (versioned)
+│
+├── reference/                      ← original files for comparison only
+│   ├── current-code.txt
+│   ├── xcam-cached-pool.php
+│   ├── xcam-rest.php
+│   ├── wr-pool-matcher.php
+│   └── api-url.txt
+│
+├── assistant/                      ← planning docs and notes
+│
+└── tests/
+    ├── health-check.ts             ← backend health checks (cron-able)
+    ├── frontend/                   ← JS unit tests
+    └── e2e/                        ← Playwright end-to-end tests
+```
+
+---
+
 ## Personalization Algorithm
 
 ### The Concept
@@ -148,14 +293,13 @@ of what they like. Same principle as TikTok's recommendation engine but for live
 - Lives in JavaScript + localStorage, zero infrastructure
 - After each performer: log `{tags, gender, watchSeconds, clickedCTA}`
 - After 3–5 performers: build tag preference scores
-- Send top preferred tags as `prefer_tags` param to `/next` endpoint
-- Backend does weighted-random from pool favoring those tags
+- Send top preferred tags as `prefer_tags` param to `/api/pool/next`
+- Backend does weighted-random from cached pool favoring those tags
 - ~200 lines total, makes experience feel personalized immediately
 
 **Phase 2 — Server-Side Signal Logging (build in second sprint)**
-- `POST /wr-pool/v1/event` endpoint stores signals in MySQL
-- Table: `wp_wr_signals (id, session_id, user_id, username, tags, watch_seconds, clicked_cta, gender, created_at)`
-- Server-side `/next` reads session history for smarter weighting
+- `POST /api/events` stores signals in MySQL `events` table
+- Server-side `/api/pool/next` reads session history for smarter weighting
 - Feeds the analytics dashboard
 - Survives page refreshes
 
@@ -163,10 +307,10 @@ of what they like. Same principle as TikTok's recommendation engine but for live
 - User accounts link signals to persistent profiles
 - Cross-device, cross-session preferences
 - Collaborative filtering when enough data exists ("users who liked X also liked Y")
-- WordPress MySQL handles this fine up to hundreds of thousands of rows
+- MySQL handles this fine up to hundreds of thousands of rows
 
 ### Tag Normalization (Required for Phase 1)
-Raw tags are inconsistent. Need a synonym map (~30-40 groups):
+Raw tags are inconsistent. Need a synonym map (~30-40 groups) in `packages/shared/src/tags.ts`:
 ```
 body_large_breasts: [bigboobs, bigtits, bigbreasts, hugetits]
 body_petite: [petite, skinny, slim, thin, tiny]
@@ -175,7 +319,7 @@ ethnicity_latina: [latina, latin, colombian, mexican]
 ```
 This ensures watching a `bigtits` performer also boosts `bigboobs` preference.
 
-### Backend Scoring (in /next endpoint)
+### Backend Scoring (in pool-matcher.ts)
 ```
 score = tagOverlapScore      (how many preferred tags match)
       + popularityBonus      (num_users normalized)
@@ -185,44 +329,218 @@ score = tagOverlapScore      (how many preferred tags match)
 Pick from top 25% by score with some randomness (avoid being 100% predictable).
 
 ### What Makes It Work
-- **Bigger pools** — need 400+ rooms per pool (not current 200) for enough variety
+- **Bigger pools** — need 400+ rooms per pool for enough variety
 - **Tag normalization** — collapses 97+ raw tags into ~30-40 meaningful dimensions
 - **Subject parsing** — extract hashtags from `room_subject` for tagless rooms
-- **Speed** — all scoring happens in cached data, no extra API calls
+- **Speed** — all scoring happens in Redis-cached data, no extra API calls
 
 ---
 
-## Backend Architecture
+## Backend API Architecture
 
-### Pool Plugin (Rebuild — merge best of v2.0 + v3.0)
-- Fetch from Chaturbate API every 60s via WP-Cron
+### Pool System (Fastify + Redis)
+- Fetch from Chaturbate API every 60s via node-cron
 - 5 pools: general(400+), female(240+), male(160+), trans(140+), couple(160+)
-- Quality weighting on fetch (top quartile by viewers — from v2.0)
-- Retry with random offsets on underfill (from v2.0)
-- Top-up from general pool if a gender pool is thin (from v2.0)
-- Session-based exclusion to prevent repeats (from v3.0)
-- Strict gender validation before serving (from v3.0)
-- Cached in WordPress transients
+- Quality weighting on fetch (top quartile by viewers)
+- Retry with random offsets on underfill (up to 4 attempts)
+- Top-up from general pool if a gender pool is thin
+- Session-based exclusion to prevent repeats (Redis sets per session)
+- Strict gender validation before serving
+- All pool data cached in Redis with 75s TTL
 
-### REST Endpoints
-| Endpoint | Method | Purpose |
+### API Routes
+
+**Public (roulette frontend):**
+| Route | Method | Purpose |
 |---|---|---|
-| `/wr-pool/v1/next` | GET | One performer from pool. Params: `pool`, `session`, `prefer_tags` |
-| `/wr-pool/v1/prime` | GET | Force refresh all pools, return counts |
-| `/wr-pool/v1/stats` | GET | Real online counts for frontend (new) |
-| `/wr-pool/v1/event` | POST | Log behavioral signal (Phase 2) |
-| `/wr-pool/v1/config` | GET | Dashboard config for frontend (new) |
+| `/api/pool/next` | GET | One performer from pool. Params: `pool`, `session`, `prefer_tags` |
+| `/api/pool/stats` | GET | Real online counts per pool for frontend display |
+| `/api/config` | GET | Public frontend config (theme, CTA text, A/B variants, feature flags) |
+| `/api/events` | POST | Log behavioral/analytics event |
 
-### Hosting
-Dedicated server — no restrictions on cron frequency, MySQL size, or resource usage.
+**Admin (dashboard, JWT auth required):**
+| Route | Method | Purpose |
+|---|---|---|
+| `/api/admin/config` | GET/PUT | Read/update all dashboard settings |
+| `/api/admin/pools` | GET | Pool health: sizes, cache age, last fetch errors |
+| `/api/admin/analytics` | GET | Dashboard metrics: funnel, engagement, content performance |
+| `/api/admin/ab-tests` | GET/POST/PUT | Manage A/B test definitions |
+| `/api/admin/content/*` | various | Content engine management (keywords, models, posts) |
+| `/api/admin/auth/login` | POST | Dashboard login (returns JWT) |
+
+### nginx Configuration
+```
+server {
+    listen 443 ssl;
+    server_name xcam.vip;
+
+    # Roulette SPA
+    location / {
+        root /path/to/public;
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Pre-rendered content pages (model pages, blog posts)
+    location /models/ {
+        root /path/to/public;
+        try_files $uri $uri/index.html =404;
+    }
+    location /blog/ {
+        root /path/to/public;
+        try_files $uri $uri/index.html =404;
+    }
+
+    # API reverse proxy
+    location /api/ {
+        proxy_pass http://127.0.0.1:3000;
+    }
+
+    # Dashboard SPA
+    location /admin/ {
+        root /path/to/dashboard/dist;
+        try_files $uri /admin/index.html;
+    }
+
+    # SEO files
+    location = /sitemap.xml { root /path/to/public; }
+    location = /robots.txt { root /path/to/public; }
+}
+```
+
+---
+
+## Database Schema
+
+All tables in a single MySQL database. No `wp_` prefix — clean names.
+
+### Roulette Tables
+
+```sql
+-- Dashboard configuration (key-value with JSON values)
+CREATE TABLE config (
+    config_key VARCHAR(100) PRIMARY KEY,
+    config_value JSON NOT NULL,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Analytics events (every user action)
+CREATE TABLE events (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    session_id VARCHAR(64) NOT NULL,
+    user_id BIGINT NULL,
+    event_type VARCHAR(50) NOT NULL,
+    data JSON,
+    ab_variants JSON,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_session (session_id),
+    INDEX idx_type_date (event_type, created_at DESC)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- A/B test definitions
+CREATE TABLE ab_tests (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    test_id VARCHAR(50) UNIQUE NOT NULL,
+    variants JSON NOT NULL,
+    split JSON NOT NULL,
+    active TINYINT(1) DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Dashboard admin accounts
+CREATE TABLE admins (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(100) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+```
+
+### Content Engine Tables
+
+```sql
+-- Generated model profile pages
+CREATE TABLE models (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    model_name VARCHAR(100) UNIQUE NOT NULL,
+    chaturbate_username VARCHAR(100) NOT NULL,
+    display_name VARCHAR(200),
+    bio TEXT,
+    categories JSON,
+    tags JSON,
+    status ENUM('pending', 'active', 'inactive', 'removed') DEFAULT 'pending',
+    is_currently_online TINYINT(1) DEFAULT 0,
+    last_online_at DATETIME NULL,
+    num_followers INT DEFAULT 0,
+    html_file_path VARCHAR(500) NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_status (status),
+    INDEX idx_online (is_currently_online)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Keyword queue (model names + general SEO keywords)
+CREATE TABLE keywords (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    keyword VARCHAR(255) NOT NULL,
+    type ENUM('model_name', 'general') NOT NULL,
+    priority INT DEFAULT 0,
+    status ENUM('pending', 'processing', 'completed', 'skipped', 'failed') DEFAULT 'pending',
+    error_message TEXT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    processed_at DATETIME NULL,
+    INDEX idx_queue (status, type, priority DESC)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Generated blog posts
+CREATE TABLE blog_posts (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    keyword_id BIGINT NOT NULL,
+    keyword VARCHAR(255) NOT NULL,
+    title VARCHAR(500),
+    content LONGTEXT,
+    linked_models JSON,
+    word_count INT DEFAULT 0,
+    internal_link_count INT DEFAULT 0,
+    html_file_path VARCHAR(500) NULL,
+    status ENUM('draft', 'published', 'failed') DEFAULT 'draft',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (keyword_id) REFERENCES keywords(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Knowledge base (AI brain context for content generation)
+CREATE TABLE knowledge_base (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255),
+    content TEXT,
+    category ENUM('platform_features', 'seo_strategy', 'content_templates', 'model_page_guide', 'blog_post_guide'),
+    tags JSON,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Pipeline run logs (every generation attempt)
+CREATE TABLE pipeline_runs (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    content_type ENUM('model_page', 'blog_post') NOT NULL,
+    keyword VARCHAR(255),
+    success TINYINT(1) DEFAULT 0,
+    quality_score INT NULL,
+    error_message TEXT NULL,
+    retry_count INT DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_type_date (content_type, created_at DESC)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+```
+
+Note: Pool data lives in Redis (not MySQL) — it's transient cache refreshed every 60s.
+Session exclusion lists also live in Redis with TTL.
 
 ---
 
 ## Admin Dashboard
 
 ### Purpose
-Single control panel for the roulette site. Designed to eventually support multiple
-sites (when a second roulette is launched, extract into standalone app).
+Custom admin panel for the roulette platform. Built as a React SPA served at `/admin/`.
+Protected by JWT auth. Designed to eventually support multiple sites.
 
 ### What It Controls
 | Section | Settings |
@@ -234,24 +552,26 @@ sites (when a second roulette is launched, extract into standalone app).
 | **Promos** | Camera box destination URL, ad slot content, interstitial config |
 | **Algorithm** | Tag weights, personalization on/off, aggressiveness, min watch time thresholds |
 | **A/B Tests** | Active tests, variant definitions, traffic split percentages |
-| **Content Engine** | (Future) keyword queue, generation triggers, publishing config |
+| **Content Engine** | Keyword queue, generation triggers, publishing config |
+| **Health** | Pool status, cache freshness, cron status, API error rates |
 
 ### Config Delivery
-All settings stored as JSON. Frontend fetches config on page load via `/wr-pool/v1/config`.
-Changing a dashboard setting = instant effect on the live site, no code deploy needed.
+All settings stored as JSON rows in `config` table. Frontend fetches public subset on
+page load via `GET /api/config`. Changing a dashboard setting = instant effect on the
+live site, no code deploy needed.
 
 ### Multi-Site (Future)
 When a second site is added, the dashboard becomes standalone and talks to each site
-via API. Each site exposes `/wr-admin/v1/config` (protected by API key).
+via API. Each site exposes `/api/admin/config` (protected by API key).
 
 ---
 
 ## Analytics & A/B Testing
 
 ### Event Tracking
-Every meaningful user action fires a lightweight event to `POST /wr-pool/v1/event`:
-```
-{session_id, event, data, timestamp, ab_variants}
+Every meaningful user action fires a lightweight event to `POST /api/events`:
+```json
+{"session_id": "...", "event_type": "...", "data": {...}, "ab_variants": {...}}
 ```
 
 Events tracked:
@@ -262,8 +582,7 @@ Events tracked:
 For `performer_watched`: includes `watch_seconds`, `tags`, `gender`, `username`
 For `cta_click`: includes `destination_url`, `performer_username`
 
-Stored in MySQL table on the dedicated server. This data feeds both
-the analytics dashboard AND the personalization algorithm.
+Stored in MySQL `events` table. Feeds both the analytics dashboard AND personalization.
 
 ### Dashboard Metrics
 | Category | Metrics |
@@ -272,12 +591,12 @@ the analytics dashboard AND the personalization algorithm.
 | **Engagement** | Avg watch time, avg performers/session, skip rate, swipe rate |
 | **Content** | Which tags/genders get longest watch times, which performers drive CTA clicks |
 | **A/B Tests** | Conversion rate per variant, statistical significance indicator |
-| **Health** | Pool sizes, cache freshness, API errors, embed load failures |
+| **Health** | Pool sizes, cache freshness, cron timing, API errors, embed load failures |
 
 ### A/B Testing
 Dead simple. A test is:
 ```json
-{"id": "start_screen_v2", "variants": ["splash", "instant"], "split": [50, 50], "active": true}
+{"test_id": "start_screen_v2", "variants": ["splash", "instant"], "split": [50, 50], "active": true}
 ```
 On page load, JS checks localStorage for assigned variant. If none, assigns based on
 split ratio and stores it. Every event includes active variant assignments. Dashboard
@@ -288,45 +607,73 @@ Planned A/B tests: start screen vs instant start, CTA placement, CTA destination
 
 ---
 
-## Test Suite
+## SEO Infrastructure
 
-### Level 1: Backend Health Checks (automated, every 5 minutes)
-- Is cron running? (`fetched_at` timestamp < 2 minutes old)
-- Are all 5 pools populated with > 0 results?
-- Does `/next` return valid response with `embed_src`?
-- Does `/next?pool=female` return a female performer?
-- Is the event endpoint accepting POSTs?
-- Is the embed URL format correct?
+Content pages (model profiles, blog posts, category hubs) are pre-rendered to static
+HTML files by the content engine. nginx serves them directly — fastest possible TTFB,
+perfectly crawlable by Google, no JS rendering required.
 
-Runs as a WP-CLI command or standalone script. Alerts on failure.
+This is **better for SEO than WordPress** — no server-side PHP processing per request,
+no caching plugins needed. The HTML is already static by design.
 
-### Level 2: Frontend Unit Tests (run before each commit)
-- Config loads and validates correctly
-- Tag normalization maps synonyms properly
-- Watch time tracker calculates durations correctly
-- Session brain scores tags correctly
-- Swipe gesture detection works
-- CTA URL built correctly with affiliate params and room name
-- A/B variant assignment is sticky (same user = same variant)
-- Online counter animates smoothly without jumps
+### URL Structure
+```
+/                          → roulette SPA (index.html)
+/models/miarose            → pre-rendered HTML (public/models/miarose/index.html)
+/blog/best-latina-cams     → pre-rendered HTML (public/blog/best-latina-cams/index.html)
+/latina-cams               → pre-rendered HTML (public/latina-cams/index.html)
+/sitemap.xml               → auto-generated by content engine
+/robots.txt                → static file
+/admin/                    → dashboard SPA (noindex, blocked by robots.txt)
+/api/                      → Fastify backend (blocked by robots.txt)
+```
 
-Fast JS tests, no browser required. Run via `npm test` or a test HTML page.
+### Sitemap Generation
+Auto-generated by content engine after every publish/unpublish:
+- All active model pages with `lastmod` dates
+- All published blog posts
+- All category hub pages
+- Roulette homepage
+- Regenerated on every content change, served as static XML
 
-### Level 3: End-to-End Smoke Tests (run after deploy)
-- Page loads without JS errors
-- Start screen appears (or performer loads, depending on variant)
-- Swiping/clicking triggers performer load
-- Performer iframe has valid src URL with correct affiliate params
-- CTA button exists with correct href
-- Gender filter works and changes pool
-- Events are sent to backend
-- No console errors, no network failures
+### Meta Tags (per page template)
+Every content page includes:
+```html
+<title>MiaRose Live Cam - Watch Free | XCam.VIP</title>
+<meta name="description" content="Watch MiaRose stream live...">
+<meta property="og:title" content="MiaRose Live Cam">
+<meta property="og:description" content="Watch MiaRose stream live...">
+<meta property="og:image" content="https://xcam.vip/images/models/miarose.jpg">
+<meta property="og:url" content="https://xcam.vip/models/miarose">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://xcam.vip/models/miarose">
+```
+Generated by `packages/content-engine/src/seo/meta.ts` per page type.
 
-Automated via Playwright/Puppeteer, or manual checklist until app stabilizes.
+### Schema Markup (JSON-LD)
+Embedded in every content page:
+- **Model pages**: ProfilePage schema with name, description, image
+- **Blog posts**: Article schema with headline, author, datePublished, image
+- **Category hubs**: CollectionPage schema
+- **All pages**: BreadcrumbList schema for navigation structure
 
-### Git Workflow
-Every working version gets committed. Health checks + unit tests must pass before
-any changes. If something breaks, roll back to the last passing commit.
+### robots.txt
+```
+User-agent: *
+Allow: /
+Allow: /models/
+Allow: /blog/
+Disallow: /admin/
+Disallow: /api/
+Sitemap: https://xcam.vip/sitemap.xml
+```
+
+### Content Page Performance
+- Static HTML = instant TTFB (nginx serves directly)
+- Chaturbate embed lazy-loaded (not in initial HTML render)
+- Images: WebP format, responsive srcset, lazy loading
+- Content pages have their own minimal CSS (not the full roulette bundle)
+- Target: < 2 second full page load on mobile
 
 ---
 
@@ -341,10 +688,10 @@ roulette and the white label.
 
 **Model Profile Pages** (`/models/{username}`)
 - AI-generated bio/content (300–500 words, SEO-optimized)
-- Live Chaturbate embed when model is online (using same embed system as roulette)
-- "Offline" state: CTA + similar models + "get notified when online"
+- Live Chaturbate embed when model is online (same embed system as roulette)
+- "Offline" state: CTA + similar models + "watch similar on roulette"
 - Tags, categories, viewer stats from Chaturbate API
-- Related models section (auto-linking, dynamic)
+- Related models section (dynamic — re-rendered when new models added)
 
 **Blog Posts** (`/blog/{keyword-slug}`)
 - AI-generated strategic articles (1,500–2,500 words)
@@ -352,455 +699,177 @@ roulette and the white label.
 - Heavy internal linking to model pages
 - Research-driven: analyze competing articles before writing
 
-### Database Schema (WordPress MySQL)
+**Category Hub Pages** (`/{category}-cams`)
+- Auto-generated grids of all active models in a category
+- `/latina-cams`, `/asian-cams`, `/teen-cams`, etc.
+- Re-rendered when models are added/removed
 
-```sql
--- Model profile pages (generated content + metadata)
-CREATE TABLE wp_xcam_models (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    model_name VARCHAR(100) UNIQUE NOT NULL,
-    chaturbate_username VARCHAR(100) NOT NULL,
-    display_name VARCHAR(200),
-    bio TEXT,
-    categories JSON,          -- ["latina", "interactive", "toys"]
-    tags JSON,                -- ["bigboobs", "lovense", "squirt"]
-    status ENUM('pending', 'active', 'inactive', 'removed') DEFAULT 'pending',
-    is_currently_online TINYINT(1) DEFAULT 0,
-    last_online_at DATETIME NULL,
-    num_followers INT DEFAULT 0,
-    wordpress_post_id BIGINT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_status (status),
-    INDEX idx_categories ((CAST(categories AS CHAR(500)))),
-    INDEX idx_online (is_currently_online)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- Keywords to process (both model names and general SEO keywords)
-CREATE TABLE wp_xcam_keywords (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    keyword VARCHAR(255) NOT NULL,
-    type ENUM('model_name', 'general') NOT NULL,
-    priority INT DEFAULT 0,               -- higher = process first
-    status ENUM('pending', 'processing', 'completed', 'skipped', 'failed') DEFAULT 'pending',
-    error_message TEXT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    processed_at DATETIME NULL,
-    INDEX idx_queue (status, type, priority DESC)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- Generated blog posts
-CREATE TABLE wp_xcam_blog_posts (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    keyword_id BIGINT NOT NULL,
-    keyword VARCHAR(255) NOT NULL,
-    title VARCHAR(500),
-    content LONGTEXT,
-    linked_models JSON,                   -- ["miarose", "sophiasmith", "bella"]
-    word_count INT DEFAULT 0,
-    internal_link_count INT DEFAULT 0,
-    wordpress_post_id BIGINT NULL,
-    status ENUM('draft', 'published', 'failed') DEFAULT 'draft',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (keyword_id) REFERENCES wp_xcam_keywords(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- Knowledge base entries (the "brain" — platform info, SEO rules, templates)
-CREATE TABLE wp_xcam_knowledge_base (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    title VARCHAR(255),
-    content TEXT,
-    category ENUM('platform_features', 'seo_strategy', 'content_templates', 'model_page_guide', 'blog_post_guide'),
-    tags JSON,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- Pipeline run logs (every generation attempt)
-CREATE TABLE wp_xcam_pipeline_runs (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    content_type ENUM('model_page', 'blog_post') NOT NULL,
-    keyword VARCHAR(255),
-    success TINYINT(1) DEFAULT 0,
-    quality_score INT NULL,               -- 0-100
-    error_message TEXT NULL,
-    retry_count INT DEFAULT 0,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_type_date (content_type, created_at DESC)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+### How Content Gets Served (Pre-rendered HTML)
+```
+Content engine generates "miarose" →
+  1. Generates content via Claude API
+  2. Validates quality (word count, uniqueness, structure)
+  3. Stores metadata in MySQL (models table)
+  4. Renders complete HTML file using template
+     → public/models/miarose/index.html
+  5. Includes: meta tags, schema markup, canonical URL, full content
+  6. Updates sitemap.xml
+  7. nginx serves it as static HTML — zero overhead
 ```
 
-Note: the roulette's `wp_wr_signals` table (defined in Analytics section) is separate
-but feeds into content prioritization — most-engaged tags = generate those model pages first.
+When data changes (model goes inactive, new related models added), the engine
+re-renders just the affected HTML files. No server-side rendering per request.
 
 ### CLI Commands
-
-The content engine is a standalone TypeScript pipeline (not a WordPress plugin).
-Could reuse the VideoDate.VIP pipeline pattern (TypeScript + Claude API).
-
 ```bash
-# --- Setup & Seeding ---
-
-# Initialize knowledge base with platform info, templates, SEO rules
+# --- Setup ---
 npx tsx src/cli/index.ts seed-brain --site xcam
-
-# Import model name keywords from CSV (priority by follower count if available)
 npx tsx src/cli/index.ts seed-keywords --file models.csv --type model_name
-
-# Import general SEO keywords
 npx tsx src/cli/index.ts seed-keywords --file general-keywords.csv --type general
 
-# --- Content Generation ---
-
-# Generate next N model pages (highest priority pending keywords)
+# --- Generate ---
 npx tsx src/cli/index.ts generate --type model_page --count 20
-
-# Generate next N blog posts
 npx tsx src/cli/index.ts generate --type blog_post --count 5
-
-# Generate one specific model page
 npx tsx src/cli/index.ts generate --type model_page --keyword miarose
 
-# --- Monitoring ---
-
-# Check online status for all active models (run daily via cron)
+# --- Monitor ---
 npx tsx src/cli/index.ts check-status --all
-
-# List keyword queue
-npx tsx src/cli/index.ts list-keywords --status pending --type model_name
-
-# List published content
+npx tsx src/cli/index.ts list-keywords --status pending
 npx tsx src/cli/index.ts list-models --status active
-npx tsx src/cli/index.ts list-posts --status published
 
-# Rebuild internal links across all published content
+# --- Maintain ---
 npx tsx src/cli/index.ts update-links
+npx tsx src/cli/index.ts regenerate-sitemap
 ```
 
-### Model Page Generation Pipeline
-
+### Model Page Pipeline
 ```
-Step 1: KEYWORD SELECTION
-  Pull next model_name from wp_xcam_keywords
-  WHERE status='pending' AND type='model_name'
-  ORDER BY priority DESC
-  Mark as 'processing'
-
-Step 2: MODEL VALIDATION
-  Check if model exists on Chaturbate (via pool API or direct CB API)
-  Pull public data: categories, tags, follower count, online status
-  If model doesn't exist or is permanently gone → mark keyword 'skipped'
-
-Step 3: BRAIN CONTEXT
-  Query wp_xcam_knowledge_base for entries matching:
-  ['platform_features', 'model_page_guide', 'seo_strategy']
-  This gives the AI writer context about tone, structure, SEO rules
-
-Step 4: CONTENT GENERATION (Claude API)
-  System prompt includes: model data, brain context, SEO guidelines
-  Generate 400-500 words covering:
-  - Engaging bio with personality
-  - What makes her shows unique
-  - Streaming style / specialties
-  - Why viewers enjoy her content
-  Must feel natural, not templated or spammy
-
-Step 5: VALIDATION
-  - Word count: 300–600 (reject outside range)
-  - Has proper H1 + at least 2 H2s
-  - Model name appears 3–5 times naturally (not stuffed)
-  - Meta description: 120–160 characters
-  - Uniqueness: < 30% similarity to any existing model page
-  - If fails: retry with improved prompt (max 2 retries)
-  - If still fails: mark 'failed', flag for manual review
-
-Step 6: RELATED MODELS
-  Query wp_xcam_models for 5-8 models with overlapping categories
-  WHERE status='active' AND model_name != current
-  ORDER by overlap count DESC, num_followers DESC
-
-Step 7: PUBLISH TO WORDPRESS
-  POST /wp-json/wp/v2/model_pages (custom post type)
-  Include: title, content HTML, meta fields (model_name, categories, related_models)
-  Status: publish
-
-Step 8: UPDATE DATABASE
-  Insert/update wp_xcam_models with all metadata
-  Update wp_xcam_keywords status='completed'
-  Log in wp_xcam_pipeline_runs with quality_score
+1. KEYWORD SELECTION     → pull next pending model_name keyword (highest priority)
+2. MODEL VALIDATION      → verify model exists on Chaturbate, pull public data
+3. BRAIN CONTEXT         → query knowledge_base for templates, SEO rules, tone
+4. CONTENT GENERATION    → Claude API: 400-500 word unique bio with SEO keywords
+5. VALIDATION            → word count, heading structure, uniqueness < 30% match, meta desc
+6. RELATED MODELS        → query models table for 5-8 with overlapping categories
+7. RENDER HTML           → apply template, inject meta tags, schema markup, content
+8. WRITE FILE            → save to public/models/{slug}/index.html
+9. UPDATE DB + SITEMAP   → mark keyword completed, update sitemap.xml
 ```
 
-### Blog Post Generation Pipeline
-
+### Blog Post Pipeline
 ```
-Step 1: KEYWORD SELECTION
-  Pull from wp_xcam_keywords WHERE type='general' AND status='pending'
-
-Step 2: WEB RESEARCH (recommended)
-  Search Google for the keyword
-  Analyze top 3 competing articles: word count, headings, topics covered, gaps
-  Identify what we can do better or differently
-
-Step 3: BRAIN CONTEXT
-  Platform knowledge + SEO rules + list of available model pages to link to
-
-Step 4: STRATEGIC PLANNING (Claude API — separate call)
-  AI generates a JSON plan before writing:
-  {
-    "title": "Top 10 Latina Cam Models on Chaturbate 2026",
-    "word_count_target": 2000,
-    "sections": ["Introduction", "What Makes a Great...", "Top 10 List", "How to Choose", "Conclusion"],
-    "models_to_feature": ["miarose", "sophia", "bella", ...],
-    "internal_link_target": 12
-  }
-
-Step 5: CONTENT GENERATION (Claude API — main call)
-  Write full article following the plan
-  Natural language, unique insights, not just a list
-
-Step 6: INTERNAL LINK INJECTION
-  Identify model mentions in text
-  Convert to links: <a href="/models/miarose">Watch MiaRose live</a>
-  Vary anchor text: model name, "see her room", "popular latina model", etc.
-  Cap: ~1 link per 100 words
-
-Step 7: VALIDATION
-  - 1,500+ words
-  - 10+ internal links to model pages
-  - Proper heading hierarchy (H1 → H2 → H3)
-  - Unique content (not rehash of existing posts)
-  - If fails: retry or flag for review
-
-Step 8: PUBLISH + UPDATE DB
-  POST /wp-json/wp/v2/posts with category and tag IDs
-  Log in wp_xcam_pipeline_runs
+1. KEYWORD SELECTION     → pull next pending general keyword
+2. WEB RESEARCH          → analyze top 3 competing articles (word count, structure, gaps)
+3. BRAIN CONTEXT         → platform knowledge + available model pages to link to
+4. STRATEGIC PLANNING    → Claude API generates JSON outline (sections, models to feature)
+5. CONTENT GENERATION    → Claude API writes full article following the plan
+6. LINK INJECTION        → convert model mentions to internal links, varied anchor text
+7. VALIDATION            → 1,500+ words, 10+ internal links, unique content
+8. RENDER HTML           → apply template, inject meta, schema, content
+9. WRITE FILE            → save to public/blog/{slug}/index.html
+10. UPDATE DB + SITEMAP
 ```
-
-### WordPress Integration
-
-**Custom Post Type for Model Pages:**
-Register `model_page` post type in a WordPress plugin with:
-- Public, REST API enabled (`show_in_rest = true`)
-- Rewrite slug: `models` → URLs become `/models/miarose`
-- Supports: title, editor, custom-fields, thumbnail
-- Custom meta fields: `model_name`, `chaturbate_username`, `categories`, `related_models`
-
-**Authentication:**
-Content engine publishes via WP REST API using JWT authentication.
-- Install JWT Authentication plugin on WordPress
-- Create a service account for the content engine
-- Store token in `.env`: `WORDPRESS_JWT_TOKEN=...`
-- All publish requests include `Authorization: Bearer {token}`
-
-**Model Online Status:**
-Model pages check online status via the roulette's existing pool API:
-- `GET /wp-json/wr-pool/v1/list?pool=general` — search cached rooms by username
-- If found in cache → online, show live embed
-- If not found → offline, show "Watch Similar Models" CTA linking to roulette
-- No additional Chaturbate API calls needed
-
-**Daily Inactive Check (cron job):**
-- Query all wp_xcam_models WHERE status='active'
-- Cross-reference with pool data
-- If not seen online for 30+ days: mark status='inactive', set WP post to draft
-- Keep page URL reserved (may come back online)
 
 ### Internal Linking System
 
-**Hybrid approach: static links in blog posts, dynamic links on model pages.**
+**Blog Posts (static):** Links baked into HTML at generation time. Permanent.
 
-**Blog Posts (static):**
-- Links are baked into HTML at generation time
-- "Top 10 Latina Models" permanently links to those 10 model pages
-- Won't auto-update, but these are evergreen articles that get periodic refreshes
+**Model Pages (re-rendered):** "Similar Models" section generated from DB query at
+render time. When new models are added, affected pages get re-rendered to include them.
+Bidirectional: adding MiaRose → she appears on SophiaSmith's page and vice versa.
 
-**Model Pages (dynamic):**
-- "Similar Models" section queries DB on page load
-- PHP template queries wp_xcam_models for overlapping categories
-- As new models are added, existing pages automatically show them
-- Bidirectional: adding MiaRose → she appears on SophiaSmith's page and vice versa
-
-**Category Hub Pages** (auto-generated):
-- `/latina-cams`, `/asian-cams`, `/teen-cams`, etc.
-- Query: all active models with matching category, ordered by followers
-- Auto-update as models are added/removed
+**Category Hubs (re-rendered):** Auto-update as models are added/removed.
 
 **Link Density Rules:**
-- Blog posts: ~1 internal link per 100 words (2,000 word post ≈ 15-20 links)
-- Model pages: 5–8 related model links in sidebar/bottom section
-- Anchor text must vary (AI-generated, not repetitive "click here")
+- Blog posts: ~1 link per 100 words
+- Model pages: 5–8 related model links
+- Varied anchor text (AI-generated, not repetitive)
 - Never link to inactive/removed models
 
 ### Content Quality Standards
 
-**Model Page Requirements:**
-- 300–600 words (sweet spot: 400–500)
-- Unique content: < 30% similarity to other model pages
-- Proper HTML: H1 (model name), at least 2 H2s, paragraphs
-- Model name appears 3–5 times naturally
-- Categories and tags mentioned in content
-- Meta description: 120–160 characters
-- No keyword stuffing, no spammy language
+**Model Pages:** 300–600 words, < 30% similarity to others, H1 + 2 H2s minimum,
+model name 3–5 times naturally, meta description 120–160 chars.
 
-**Blog Post Requirements:**
-- 1,500+ words (target: 2,000)
-- 10+ internal links to model pages
-- Proper heading hierarchy
-- Unique angle vs competing articles
-- Comparison tables where applicable
-- Natural keyword usage throughout
+**Blog Posts:** 1,500+ words, 10+ internal links, proper heading hierarchy,
+unique angle vs competition.
 
-**Auto-Reject + Retry:**
-If validation fails → regenerate with improved prompt (max 2 retries).
-If still fails → mark as 'failed' in pipeline_runs, flag for manual review.
-Track success rates per content type in pipeline_runs table.
+**Auto-reject:** If validation fails → retry with improved prompt (max 2).
+If still fails → mark 'failed', flag for manual review. Track success rates.
 
 ### SEO Risk Management
 
-**Thin Content Prevention:**
-- Minimum 300 words per model page (enforced by validator)
-- Each page has a unique angle, not just template fill-in
-- Vary writing style and structure across pages
-- Include unique sections per model: specialties, streaming style, viewer experience
-
-**Duplicate Content Prevention:**
-- Similarity check before publishing (compare against all existing pages)
-- Reject if > 30% match with any existing page
-- Use different sentence structures and vocabulary per category
-- Blog posts must have unique research/insights, not just rehashed lists
-
-**Over-Optimization Prevention:**
-- Model name max 5 times per 400 words
-- Internal links feel natural, contextual — not forced
-- Varied anchor text (AI generates options, not repeated phrases)
-- Link density cap enforced by validator
-
-**Gradual Indexing Strategy (critical):**
-Do NOT generate 1,000 pages and submit all at once.
+**Gradual Indexing (critical):**
 ```
-Week 1:  Generate 20 model pages → submit to Search Console → monitor
-Week 2:  If no issues, generate 50 more
-Week 3:  Scale to 100 if indexing healthy
+Week 1:  20 model pages → submit to Search Console → monitor
+Week 2:  50 more if no issues
+Week 3:  100 if indexing healthy
 Week 4:  Monitor for penalties, thin content warnings
 Month 2: Begin blog posts (10 initially)
-Month 3: Scale based on results — if ranking well, accelerate
+Month 3: Scale based on results
 ```
-Monitor Google Search Console weekly for: indexing errors, manual actions,
-coverage drops, thin content warnings.
 
-**Quality Signals to Maintain:**
-- Page load < 2 seconds (even with live embed)
-- Mobile-optimized (same responsive approach as roulette)
-- Valid HTML, proper schema markup
-- Real user engagement (time on page from live embeds)
+**Thin Content Prevention:** Min 300 words enforced, unique angle per page, varied structure.
 
-### Implementation Phases
+**Duplicate Prevention:** Similarity check before publish, reject > 30% match.
 
-**Phase 1 — MVP: Validate the Concept (Week 1-2)**
-Goal: Prove model pages can get indexed and drive traffic.
-- [ ] Create MySQL tables
-- [ ] Build basic CLI: seed-keywords, generate (model_page only), list
-- [ ] Model page generator with Claude API
-- [ ] WordPress custom post type + publishing integration
-- [ ] Simple related models (manual list initially)
-- [ ] Import 50 model keywords, generate 20 pages, publish
-- [ ] Submit to Search Console
-- Success: 5+ pages indexed within 2 weeks, no penalties
+**Over-Optimization Prevention:** Keyword density caps, natural link placement, varied anchors.
 
-**Phase 2 — Scale Model Pages (Week 3-4)**
-Goal: Prove it scales without quality degradation.
-- [ ] Quality validation system (uniqueness check, word count, structure)
-- [ ] Dynamic related models query (auto-linking)
-- [ ] Online/offline status on model pages
-- [ ] Daily status check cron job
-- [ ] Generate 100 more model pages
-- Success: 50+ indexed, 10+ ranking top 50 for model names
-
-**Phase 3 — Blog Content (Month 2)**
-Goal: Capture general keywords with long-form content.
-- [ ] Web research layer (analyze competing articles)
-- [ ] Blog post generator with strategic planning step
-- [ ] Internal link injection system
-- [ ] Category hub pages
-- [ ] Generate 10 blog posts linking to 100+ model pages
-- Success: Blog posts indexed, organic traffic increases 20%+
-
-**Phase 4 — Optimize & Automate (Month 3+)**
-Goal: Reduce manual work, run on autopilot.
-- [ ] Auto-quality approval for high-scoring content
-- [ ] Automated keyword research (trending models, seasonal topics)
-- [ ] Link optimization agent (identify weak clusters, rebalance)
-- [ ] Scale to 500+ model pages, 50+ blog posts
-- [ ] Potential: fully agentic orchestrator that manages the pipeline autonomously
-
-### How the Content Engine Connects to the Roulette
-
-- **Shared pool data** — model pages use the same cached API data for online status
-- **Shared embed system** — same iframe embed code, same affiliate params
-- **Shared analytics** — same event tracking on model pages
-- **Roulette feeds SEO priorities** — most-engaged tags from wp_wr_signals = generate those model pages first
+### How It Connects to the Roulette
+- **Shared pool data** — model pages check online status via same Redis cache
+- **Shared embed system** — same iframe embed code from `packages/shared/src/embed.ts`
+- **Shared analytics** — same event tracking on model pages via `POST /api/events`
+- **Roulette feeds SEO priorities** — most-engaged tags from events = generate those model pages first
 - **Model pages feed the roulette** — "model is offline → watch similar on roulette"
 - **Category hubs link to roulette** — "Can't decide? Try our random cam roulette"
 
-### What the Roulette Build Must Account for Now
-1. Pool data accessible via clean REST API (not locked inside roulette JS)
-2. Embed URL construction is a shared utility function (not hardcoded)
-3. Analytics events are generic enough to work on any page type
-4. Dashboard has a "content engine" config section ready to expand
-5. WordPress has the custom post type plugin ready even before content engine ships
+### Implementation Phases
+
+**Phase 1 — MVP (Week 1-2):** 20 model pages to validate indexing and ranking.
+
+**Phase 2 — Scale (Week 3-4):** Quality validation, dynamic related models, 100 more pages.
+
+**Phase 3 — Blog Content (Month 2):** Web research, blog generator, link injection, category hubs.
+
+**Phase 4 — Automate (Month 3+):** Auto keyword research, auto quality approval, agentic pipeline.
 
 ---
 
-## Project Structure
+## Test Suite
 
-```
-xcamvip/
-├── CLAUDE.md                    ← this file (project brain)
-├── index.html                   ← main HTML shell
-├── css/
-│   ├── base.css                 ← reset, layout, typography
-│   ├── header.css               ← transparent header, filter dropdown, online count
-│   ├── video.css                ← video area, iframes, crop
-│   ├── controls.css             ← NEXT button, swipe hints
-│   ├── overlays.css             ← start screen, transition indicator
-│   ├── modals.css               ← CTA modal, promo modals
-│   ├── camera.css               ← camera promo box
-│   └── theme.css                ← color variables (easy to swap)
-├── js/
-│   ├── config.js                ← endpoints, affiliate IDs, all constants, dashboard config
-│   ├── app.js                   ← init, start screen, main lifecycle
-│   ├── pool.js                  ← fetch performers, preload, dual iframe swap
-│   ├── swipe.js                 ← touch/swipe gesture handling
-│   ├── controls.js              ← NEXT, gender filter, dropdown logic
-│   ├── camera.js                ← camera promo box + redirect
-│   ├── modals.js                ← CTA modals, room entry
-│   ├── online.js                ← real online count with smooth animation
-│   ├── crop.js                  ← video crop/positioning
-│   ├── brain.js                 ← session personalization (tag tracking, scoring)
-│   ├── events.js                ← analytics event dispatching
-│   └── ab.js                    ← A/B test variant assignment
-├── plugins/
-│   └── xcam-pool/               ← rebuilt pool plugin (best of v2 + v3)
-│       ├── xcam-pool.php        ← main plugin file
-│       ├── includes/
-│       │   ├── class-pool-fetcher.php   ← Chaturbate API fetching + caching
-│       │   ├── class-pool-matcher.php   ← weighted selection, personalization
-│       │   ├── class-event-logger.php   ← analytics event storage
-│       │   └── class-config-api.php     ← dashboard config REST endpoint
-│       └── admin/
-│           └── class-dashboard.php      ← WordPress admin dashboard page
-├── tests/
-│   ├── health-check.php         ← backend health checks (cron-able)
-│   ├── test-frontend.html       ← JS unit tests
-│   └── smoke-test.js            ← end-to-end tests (Playwright)
-├── assets/
-│   └── (logos, icons)
-└── reference/                   ← original files for comparison only
-    ├── current-code.txt
-    ├── xcam-cached-pool-v3.php
-    ├── xcam-rest-original.php
-    ├── wr-pool-matcher-v2.php
-    └── api-url.txt
-```
+### Level 1: Backend Health Checks (automated, every 5 minutes via cron)
+- Is the API server responding?
+- Is Redis connected and pool data fresh? (`fetched_at` < 2 minutes old)
+- Are all 5 pools populated with > 0 results?
+- Does `/api/pool/next` return valid response with `embed_src`?
+- Does `/api/pool/next?pool=female` return a female performer?
+- Is the events endpoint accepting POSTs?
+- Is the embed URL format correct?
+
+Runs as a TypeScript script. Alerts on failure (email, webhook, or log).
+
+### Level 2: Frontend Unit Tests (run before each commit)
+- Config loads and validates correctly
+- Tag normalization maps synonyms properly
+- Watch time tracker calculates durations correctly
+- Session brain scores tags correctly
+- Swipe gesture detection works
+- CTA URL built correctly with affiliate params and room name
+- A/B variant assignment is sticky (same user = same variant)
+- Online counter animates smoothly without jumps
+
+Fast JS tests, run via `npm test`.
+
+### Level 3: End-to-End Smoke Tests (run after deploy)
+- Page loads without JS errors
+- Start screen appears (or performer loads, depending on variant)
+- Swiping/clicking triggers performer load
+- Performer iframe has valid src URL with correct affiliate params
+- CTA button exists with correct href
+- Gender filter works and changes pool
+- Events are sent to backend
+- No console errors, no network failures
+
+Automated via Playwright.
 
 ---
 
@@ -809,17 +878,18 @@ xcamvip/
 1. **Mobile-first** — majority of traffic is mobile
 2. **Speed over polish** — fast transitions beat pretty animations
 3. **No fake elements** — real data, honest UI
-4. **Everything configurable** — ad slots, CTAs, colors, algorithm tuning — all in dashboard config
+4. **Everything configurable** — ad slots, CTAs, colors, algorithm tuning — all in dashboard
 5. **Well-commented code** — every file, every function, clear purpose
 6. **Git versioned** — commit working states, test before changing
-7. **Modular** — each JS/CSS file has one job, each PHP class has one responsibility
-8. **Future-proof** — pool data, embeds, analytics designed to serve both roulette and content engine
+7. **Modular** — each JS/CSS file has one job, each service has one responsibility
+8. **SEO-native** — content pages are pre-rendered HTML with full meta/schema from day one
+9. **Future-proof** — shared types, embed utilities, analytics designed for both roulette and content engine
 
 ---
 
 ## What Is NOT in Scope (Yet)
 
-- SEO content engine implementation (architecture documented above, build later)
+- SEO content engine implementation (architecture documented above, build after roulette)
 - User accounts / login system (Phase 3 of personalization)
 - Real chat functionality (roulette has no chat — that's the white label's job)
 - Email collection / invite gating (removed — direct conversion only)
@@ -827,11 +897,26 @@ xcamvip/
 
 ---
 
+## Build Order
+
+1. **Backend API** — Fastify server, pool fetcher, Redis cache, `/api/pool/next`
+2. **Frontend roulette** — HTML shell, CSS, dual iframe system, swipe, controls
+3. **Integration** — frontend talks to API, performers load, transitions work
+4. **Personalization Phase 1** — client-side brain, `prefer_tags` param
+5. **Analytics** — event tracking, events table
+6. **Dashboard MVP** — React SPA, config management, basic metrics
+7. **A/B testing** — variant assignment, dashboard comparison
+8. **Health checks + tests** — automated monitoring
+9. **Content engine Phase 1** — model page generator, HTML renderer, 20 test pages
+10. **Content engine scale** — validation, related models, blog posts, category hubs
+
+---
+
 ## Development Workflow
 
 1. Read CLAUDE.md at start of every session
 2. Check `.claude/projects/` memory files for session-specific notes
-3. Run health checks + unit tests before making changes
+3. Run health checks + tests before making changes
 4. Commit to git before any breaking changes
 5. Test on mobile viewport first
 6. Update CLAUDE.md and memory files after significant decisions or changes

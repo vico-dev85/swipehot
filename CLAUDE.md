@@ -873,6 +873,94 @@ Automated via Playwright.
 
 ---
 
+## Lessons from the Original Code (Re-Review)
+
+### Patterns to Keep (Proven Good)
+- **Dual iframe cross-fade**: Two iframes stacked, one preloaded while other plays, 0.6s opacity
+  transition on swap. Eliminates blank-screen flash. The CSS is only 12 lines. Keep exactly.
+- **Start-screen priming**: First performer loads into hidden iframe WHILE splash screen is visible.
+  When user taps "Chat now!", `swapIframes()` fires instantly. Zero perceived latency at first impression.
+- **Settled guard pattern**: `preloadInBackground()` uses a `settled` boolean so only one of
+  onLoad/onError/timeout resolves the promise. Prevents race conditions. Keep this pattern.
+- **100ms preload timer**: Comment says "12 seconds" but actual value is 100ms — next performer
+  starts loading almost immediately. This is correct for TikTok-fast UX. Keep the behavior.
+- **Overflow-crop for iframes**: `.live-wrap { overflow: hidden }` + JS-calculated canvas width =
+  `object-fit: cover` equivalent for iframes. Only 4 lines of CSS + one JS calculation. Elegant.
+- **Show/hide visibility pattern**: `opacity: 0; visibility: hidden; transition: opacity 0.4s, visibility 0s 0.4s`
+  — correct way to animate overlays while removing from pointer events and accessibility tree.
+- **Click-blocker overlay**: Invisible div over iframes prevents users clicking into the Chaturbate
+  embed (which would navigate away without affiliate tracking). Critical for revenue. Keep, but
+  make it double as the CTA click target.
+- **Safe area insets**: `@supports (padding: max(0px))` with `env(safe-area-inset-*)` for notched
+  iPhones. Small but important for mobile-first.
+- **Tabular numerals**: `font-variant-numeric: tabular-nums` on the online counter prevents layout
+  shift when digits change.
+- **Header grid**: `grid-template-columns: 1fr auto 1fr` centers the online count regardless of
+  filter button width.
+- **CSS sibling combinators for state**: `.end-chat-overlay.show ~ .local-cam { opacity: 0 }` hides
+  elements via CSS when overlays show, no JS needed. DOM was structured to enable this.
+- **Session exclusion server-side only**: Frontend sends session ID, backend tracks exclusions.
+  Can't trust the client. Port to Redis `SADD`/`SISMEMBER`/`EXPIRE`.
+
+### Patterns to Avoid (Proven Bad)
+- **No retry logic anywhere**: One fetch attempt, then hardcoded fallback URL. Our rebuild: retry
+  once after 1s, then show "having trouble" message.
+- **Synchronous emergency refetch**: Both plugins block user requests for 8-32s if cache is empty.
+  Our rebuild: background cron is the ONLY thing that fetches from Chaturbate. If cache is empty,
+  return 503. Never block user requests on upstream calls.
+- **Fake online counter**: Random 22k-25k with drift. The animation technique (cubic ease-out via
+  requestAnimationFrame) is good — keep the animation, feed it real data.
+- **Double event binding**: Two code blocks bind click handlers to the same buttons. Every click
+  fires twice. Analytics would double-count. Single binding in our rebuild.
+- **Append-only CSS**: Same selectors declared 3-5 times with escalating `!important`. ~2,500 lines
+  that could be ~600. Our rebuild: one declaration per selector, CSS custom properties, zero `!important`.
+- **Desktop-first breakpoints**: All `max-width` queries. Our rebuild: mobile-first with `min-width`.
+- **Z-index chaos**: Values from -1 to 5000 with arbitrary gaps. Our rebuild: clean scale
+  (1-10 content, 100 header, 200 overlays, 500 modals, 1000 start screen).
+- **Expensive animations running always**: `box-shadow` and `filter: drop-shadow()` animations
+  cause repaints every frame. 200%×200% pseudo-element rotating behind start screen.
+  Our rebuild: only animate `transform` and `opacity` (GPU-composited).
+- **`pickEmbed` Swiss-army parser**: Handles 10+ response shapes because the API format was
+  untrusted. Since we control the API response shape in our Fastify backend, simplify to 5 lines.
+- **Session ID never rotates**: Exclusion list grows unbounded during long sessions. Our rebuild:
+  rotate session ID after 100 performers or 30 minutes (whichever first).
+
+### Plugin Merge Strategy (v2.0 + v3.0 → Fastify/Redis)
+**From v2.0 (wr-pool-matcher):**
+- Larger pools (400/240/160/140/160 vs v3.0's 200/150/100/80/100)
+- Multi-attempt fetch with random offsets 50-2500 (up to 4 attempts per pool)
+- General-to-specific top-up (borrow matching-gender from general pool)
+- Quality-weighted top-quartile selection (sort by viewers, pick from top 25%)
+- HTTP status code checking (v3.0 doesn't check)
+- Custom User-Agent header
+
+**From v3.0 (xcam-cached-pool):**
+- Session exclusion via stored lists (port to Redis Sets)
+- Minimum viewer threshold (num_users >= 1, raise to 5+)
+- OOP class structure (maps to ES modules)
+- Centralized response formatting
+
+**New in Fastify rebuild:**
+- Rate limiting on all endpoints (`@fastify/rate-limit`)
+- Background-only refresh (never block user requests on upstream calls)
+- Redis-native atomic operations (SADD, SISMEMBER, SET with EX)
+- Parallelized upstream fetches (`Promise.all()` for speed)
+- Proper health/metrics endpoint (cache age, pool sizes, error counts)
+- Input validation via Fastify JSON schemas
+- CORS configuration
+- Staleness detection (compare `fetched_at` vs now, surface to clients)
+- Session ID validation (length limit, character whitelist)
+
+### Security Fixes Required
+- Rate limit all API endpoints (original had zero rate limiting)
+- Validate session ID parameter (original accepted any string, enabling storage DoS)
+- Never expose raw pool data publicly (v2.0's `/list` and `/_diag` leaked everything)
+- Check HTTP status codes on upstream responses (v3.0 didn't)
+- Move affiliate constants to environment variables (not hardcoded)
+- Add CORS headers (original relied on WordPress defaults)
+
+---
+
 ## Design Principles
 
 1. **Mobile-first** — majority of traffic is mobile

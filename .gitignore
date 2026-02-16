@@ -25,6 +25,7 @@ desktop.ini
 dist/
 build/
 *.log
+*.tsbuildinfo
 
 # Package lock (use npm workspaces root lock only)
 packages/*/package-lock.json

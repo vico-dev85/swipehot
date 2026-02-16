@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head><title>Embed Test</title></head>
+<body style="margin:0;background:#111;color:#fff;font-family:sans-serif;padding:20px">
+<h3>Chaturbate Embed Test</h3>
+<p>If you see live video below, the embed URL works. If black/blank, the issue is with Chaturbate's embed.</p>
+
+<h4>Test 1: /embed/ with embed_video_only=1</h4>
+<iframe
+  src="https://chaturbate.com/embed/nica_rock/?campaign=roGHG&tour=9oGW&track=wetroulette&room=nica_rock&disable_sound=1&embed_video_only=1&join_overlay=1&mobileRedirect=auto"
+  width="850" height="528"
+  style="border:none"
+  allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+  scrolling="no"
+  referrerpolicy="no-referrer">
+</iframe>
+
+<h4>Test 2: /embed/ without embed_video_only (full player)</h4>
+<iframe
+  src="https://chaturbate.com/embed/nica_rock/?campaign=roGHG&tour=9oGW&track=wetroulette&room=nica_rock&disable_sound=1"
+  width="850" height="528"
+  style="border:none"
+  allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+  scrolling="no">
+</iframe>
+
+<h4>Test 3: /in/ URL from API (should redirect — likely won't show video)</h4>
+<iframe
+  src="https://chaturbate.com/in/?tour=9oGW&campaign=roGHG&track=embed&room=nica_rock&bgcolor=white&embed_video_only=1"
+  width="850" height="528"
+  style="border:none"
+  allow="autoplay; encrypted-media; fullscreen; picture-in-picture">
+</iframe>
+
+<h4>Test 4: Raw Chaturbate embed (exactly as API provides in iframe_embed field)</h4>
+<iframe
+  src="https://chaturbate.com/in/?tour=9oGW&campaign=roGHG&track=embed&room=nica_rock&bgcolor=white"
+  width="850" height="528"
+  style="border:none">
+</iframe>
+
+<p style="margin-top:20px;color:#888">Tell me which test(s) show video and which are black/blank.</p>
+</body>
+</html>

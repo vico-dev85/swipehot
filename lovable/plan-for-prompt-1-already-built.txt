@@ -1,0 +1,65 @@
+# xcam.vip — TikTok-Style Cam Roulette Prototype
+
+## Overview
+A mobile-first, full-screen design prototype with dark cinematic aesthetics. No backend, no real streams — pure UI/UX polish with placeholder data. The goal: make it feel like a premium, addictive product.
+
+---
+
+## Phase 1: Design System & Foundation
+- Set up the custom color palette (true black, neon accents, glass variables) as CSS custom properties
+- Configure Inter font with text-shadow utilities for overlay readability
+- Build reusable glassmorphism, grain texture overlay, and gradient utilities
+- Define animation keyframes: spring transitions, heart burst, shimmer loading, pulse, counter animations
+- Set button press micro-interactions (scale 0.95 on press, spring back)
+
+## Phase 2: Age Verification Gate
+- Full-screen black background with centered xcam.vip logo (subtle glow)
+- Age-restricted content message with a single pink pill CTA "I am 18+ — Enter"
+- "Remember me" toggle and "Leave" link
+- Cookie-based persistence so it only shows once
+- Premium velvet-rope feel — minimal, instant-loading
+
+## Phase 3: Start Screen (Splash)
+- Subtle animated gradient background (dark purple → dark blue)
+- xcam.vip logo centered with optional tagline "Live. Random. Real."
+- Large pink CTA: "Start Watching" — pill shape, glowing shadow
+- Online counter "🟢 4,287 live now" with tabular-nums
+- Subtle shimmer/particle animation in the background
+- "Free. No signup required." subtext
+
+## Phase 4: Roulette View (Core Experience)
+The main screen where users spend 95% of their time:
+
+- **Full-screen video area** with dark gradient/blurred placeholders filling 100vw × 100vh
+- **Bottom gradient overlay** (35vh) for text readability
+- **Top bar**: hamburger/logo, gender filter pills (All/♀/♂/⚧/👫), online viewer count
+- **Right-side action stack** (TikTok-style): profile avatar, heart/like, chat, share, sound toggle — all circular glass buttons with counts
+- **Bottom-left info block**: performer name + verified badge, tags, short bio with "...more" truncation
+- **Primary CTA**: "Watch Her Live →" — fixed bottom, pink pill, glowing shadow
+- **Swipe-up navigation**: vertical swiping between performers with spring-physics transitions (300-400ms)
+- **Double-tap like animation**: large heart at tap point with scale overshoot + fade
+- **First-time swipe hint**: subtle animated arrow that disappears after first swipe
+- **Loading shimmer** between performer transitions
+
+## Phase 5: Gender Filter Bottom Sheet
+- Glass bottom sheet sliding up with spring animation
+- Large tappable cards: Everyone / Women / Men / Trans / Couples
+- Active selection highlighted with accent border
+- Dismiss by tapping outside or swiping down
+
+## Phase 6: Performer Quick Profile Panel
+- Slides in from right, covers ~80% of screen
+- Glassmorphism background
+- Larger avatar, name, verified badge, tag pills
+- Stats row: viewers, likes, online time
+- Bio text + "Watch Her Live →" CTA
+- "Similar Performers" horizontal avatar row
+- Dismiss by tapping outside or swiping right
+
+## Phase 7: Responsive Polish
+- Mobile-first (375-428px) with safe area inset handling and 44px minimum touch targets
+- Tablet (768px+): slightly larger elements, narrower CTA
+- Desktop (1024px+): max-width video container, keyboard hints, hover states with subtle glow/scale
+
+## Placeholder Data
+All screens use fake performer names (ScarletLive, MiaBellaCam, etc.), fake viewer/like/comment counts, and dark gradient backgrounds as video placeholders. No real images or streams.

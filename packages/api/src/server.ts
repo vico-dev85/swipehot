@@ -4,25 +4,33 @@ import rateLimit from '@fastify/rate-limit';
 import cron from 'node-cron';
 import { config } from './config.js';
 import { connectRedis, disconnectRedis } from './redis.js';
+import { connectMySQL, disconnectMySQL } from './db.js';
 import { refreshPool } from './services/pool-fetcher.js';
 import { poolRoutes } from './routes/pool.js';
 import { healthRoutes } from './routes/health.js';
 import { eventRoutes } from './routes/events.js';
+import { configRoutes } from './routes/config.js';
+
+const isProd = process.env.NODE_ENV === 'production';
 
 const fastify = Fastify({
-  logger: {
-    level: 'info',
-    transport: {
-      target: 'pino-pretty',
-      options: { colorize: true },
-    },
-  },
+  logger: isProd
+    ? { level: 'info' } // JSON logs in production (no pino-pretty)
+    : {
+        level: 'info',
+        transport: {
+          target: 'pino-pretty',
+          options: { colorize: true },
+        },
+      },
 });
 
 async function start(): Promise<void> {
   // Register plugins
   await fastify.register(cors, {
-    origin: true, // TODO: restrict to xcam.vip domains in production
+    origin: isProd
+      ? ['https://xcam.vip', 'https://www.xcam.vip']
+      : true,
   });
 
   await fastify.register(rateLimit, {
@@ -34,10 +42,15 @@ async function start(): Promise<void> {
   await fastify.register(poolRoutes);
   await fastify.register(healthRoutes);
   await fastify.register(eventRoutes);
+  await fastify.register(configRoutes);
 
   // Connect to Redis
   console.log('[Server] Connecting to Redis...');
   await connectRedis();
+
+  // Connect to MySQL (optional — gracefully degrades to in-memory buffer)
+  console.log('[Server] Connecting to MySQL...');
+  await connectMySQL();
 
   // Initial pool fetch
   console.log('[Server] Running initial pool fetch...');
@@ -67,6 +80,7 @@ async function shutdown(signal: string): Promise<void> {
   console.log(`[Server] ${signal} received, shutting down...`);
   await fastify.close();
   await disconnectRedis();
+  await disconnectMySQL();
   process.exit(0);
 }
 

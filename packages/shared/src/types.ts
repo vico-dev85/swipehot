@@ -12,7 +12,9 @@ export interface CBPerformer {
   image_url: string;
   image_url_360x270: string;
   iframe_embed: string;
+  iframe_embed_revshare: string;
   chat_room_url: string;
+  chat_room_url_revshare: string;
   current_show: string;
   country: string;
   room_subject: string;

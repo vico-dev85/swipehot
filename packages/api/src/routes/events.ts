@@ -1,44 +1,48 @@
 import type { FastifyInstance } from 'fastify';
-import type { AnalyticsEvent } from '@xcamvip/shared';
-import { isValidSessionId } from '../services/session.js';
+import { logEvents, getBufferedCount, type EventPayload } from '../services/event-logger.js';
 
-// In-memory buffer for events — flushed to MySQL periodically
-// TODO: Replace with MySQL INSERT when database is set up
-const eventBuffer: AnalyticsEvent[] = [];
+interface BatchBody {
+  events: EventPayload[];
+}
 
 export async function eventRoutes(fastify: FastifyInstance): Promise<void> {
 
-  // POST /api/events — lightweight analytics event ingestion
-  fastify.post<{ Body: AnalyticsEvent }>('/api/events', async (request, reply) => {
-    const event = request.body;
+  // POST /api/events — batch analytics event ingestion
+  // Client sends { events: [...] } from the EventTracker flush
+  fastify.post<{ Body: BatchBody }>('/api/events', async (request, reply) => {
+    const body = request.body;
 
-    // Validate
-    if (!event || !event.session_id || !event.event_type) {
-      return reply.status(400).send({ error: 'Missing session_id or event_type' });
-    }
-    if (!isValidSessionId(event.session_id)) {
-      return reply.status(400).send({ error: 'Invalid session_id format' });
+    // Support both single event and batch format
+    let events: EventPayload[];
+    if (Array.isArray((body as any).events)) {
+      events = body.events;
+    } else if (body && (body as any).event_type) {
+      // Legacy single-event format
+      events = [body as unknown as EventPayload];
+    } else {
+      return reply.status(400).send({ error: 'Expected { events: [...] } or single event object' });
     }
 
-    // Buffer the event (fire-and-forget from frontend's perspective)
-    eventBuffer.push({
-      session_id: event.session_id,
-      event_type: event.event_type,
-      data: event.data || {},
-      ab_variants: event.ab_variants || {},
-      timestamp: event.timestamp || Date.now(),
+    // Basic validation — drop malformed events, keep valid ones
+    const valid = events.filter((e) =>
+      e && typeof e.session_id === 'string' && e.session_id.length > 0
+        && typeof e.event_type === 'string' && e.event_type.length > 0
+    );
+
+    if (valid.length === 0) {
+      return reply.status(400).send({ error: 'No valid events in batch' });
+    }
+
+    // Fire-and-forget persistence (don't block response)
+    logEvents(valid).catch((err) => {
+      fastify.log.error({ err }, 'Event logging failed');
     });
 
-    // Keep buffer bounded
-    if (eventBuffer.length > 10000) {
-      eventBuffer.splice(0, eventBuffer.length - 10000);
-    }
-
-    return reply.status(202).send({ ok: true });
+    return reply.status(202).send({ accepted: valid.length });
   });
 
-  // GET /api/events/count — simple count for health monitoring
+  // GET /api/events/count — health monitoring
   fastify.get('/api/events/count', async (_request, reply) => {
-    return reply.send({ buffered: eventBuffer.length });
+    return reply.send({ buffered_in_memory: getBufferedCount() });
   });
 }

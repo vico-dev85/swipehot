@@ -7,6 +7,10 @@ export const config = {
   cbApiUrl: process.env.CB_API_URL || 'https://chaturbate.com/api/public/affiliates/onlinerooms/',
   cbApiToken: process.env.CB_API_TOKEN || '',
 
+  // White label domain — embeds and CTAs go through this, not chaturbate.com directly
+  // This avoids ad blocker issues and keeps branding consistent
+  whitelabelDomain: process.env.WHITELABEL_DOMAIN || 'www.xcam.vip',
+
   redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
 
   affiliate: {
@@ -16,6 +20,15 @@ export const config = {
   },
 
   poolRefreshCron: process.env.POOL_REFRESH_CRON || '*/60 * * * * *',
+
+  mysql: {
+    host: process.env.MYSQL_HOST || 'localhost',
+    port: parseInt(process.env.MYSQL_PORT || '3306', 10),
+    user: process.env.MYSQL_USER || 'xcamvip',
+    password: process.env.MYSQL_PASSWORD || '',
+    database: process.env.MYSQL_DATABASE || 'xcamvip',
+    connectionLimit: parseInt(process.env.MYSQL_POOL_SIZE || '10', 10),
+  },
 
   rateLimit: {
     max: parseInt(process.env.RATE_LIMIT_MAX || '100', 10),

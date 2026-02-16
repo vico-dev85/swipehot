@@ -9,8 +9,9 @@ room, get notified) they click through to **www.xcam.vip**, a Chaturbate white l
 owned by the same person. Revenue comes from Chaturbate affiliate commissions on signups.
 
 The platform is custom-built — no WordPress, no CMS framework. A TypeScript monorepo
-with Fastify API, vanilla JS frontend, React admin dashboard, and a CLI content engine.
-All served by nginx on a dedicated server.
+with Fastify API, React SPA roulette (Vite + Tailwind + Framer Motion), static HTML
+content pages, React admin dashboard, and a CLI content engine. All served by nginx
+on a dedicated server.
 
 ## Two Domains (Same Owner)
 
@@ -142,9 +143,11 @@ Falls back to realistic estimation if real count temporarily unavailable.
 | Campaign | `roGHG` |
 | Tour | `9oGW` |
 | Track | `wetroulette` |
-| Embed pattern | `https://www.xcam.vip/embed/{username}/?campaign=roGHG&disable_sound=1&embed_video_only=1&join_overlay=1&mobileRedirect=auto&room={username}&tour=9oGW&track=wetroulette` |
+| Embed pattern | `https://chaturbate.com/embed/{username}/?campaign=roGHG&tour=9oGW&track=wetroulette&room={username}&disable_sound=1&embed_video_only=1&join_overlay=1&mobileRedirect=auto` |
 | Registration | `https://www.xcam.vip/accounts/register/?track=xcamvip&room={username}` |
-| Room direct | `https://www.xcam.vip/in/?tour=9oGW&campaign=roGHG&track=default&room={username}` |
+| Room direct (CTA) | `https://chaturbate.com/in/?tour=9oGW&campaign=roGHG&track=wetroulette&room={username}` |
+
+**IMPORTANT:** The API's `iframe_embed` field contains `/in/` URLs which are **302 redirects** — they do NOT work as iframe `src`. Always use `/embed/{username}/` for embeds. Use `/in/` only for CTA click-through links. Currently using `chaturbate.com` directly because `www.xcam.vip` (white label) has SSL issues — switch back when SSL is fixed. |
 
 ---
 
@@ -205,7 +208,7 @@ GET https://chaturbate.com/api/public/affiliates/onlinerooms/
 
 | Layer | Technology | Why |
 |---|---|---|
-| **Frontend (roulette)** | Vanilla HTML/CSS/JS | No build step, fast, cacheable, served as static files |
+| **Frontend (roulette)** | React SPA (Vite + TypeScript + Tailwind + Framer Motion) | Lovable prototype had working spring physics, roulette is behind age gate so SEO irrelevant |
 | **Backend API** | Node.js + Fastify (TypeScript) | Fast, schema validation, modern async, shared language with content engine |
 | **Database** | MySQL | Already running on server, sufficient for all needs |
 | **Cache** | Redis | Pool data, sessions, config — survives process restarts |
@@ -233,30 +236,37 @@ xcamvip/
 ├── tsconfig.base.json              ← shared TypeScript config
 │
 ├── packages/
-│   ├── frontend/                   ← roulette app (vanilla JS, no build step)
-│   │   ├── index.html
-│   │   ├── css/
-│   │   │   ├── base.css            ← reset, layout, typography
-│   │   │   ├── header.css          ← transparent header, filter, online count
-│   │   │   ├── video.css           ← video area, iframes, crop
-│   │   │   ├── controls.css        ← NEXT button, swipe hints
-│   │   │   ├── overlays.css        ← start screen, transition indicator
-│   │   │   ├── modals.css          ← CTA modal, promo modals
-│   │   │   ├── camera.css          ← camera promo box
-│   │   │   └── theme.css           ← CSS custom properties (colors, easy to swap)
-│   │   └── js/
-│   │       ├── config.js           ← API endpoints, affiliate IDs, all constants
-│   │       ├── app.js              ← init, start screen, main lifecycle
-│   │       ├── pool.js             ← fetch performers, preload, dual iframe swap
-│   │       ├── swipe.js            ← touch/swipe gesture handling
-│   │       ├── controls.js         ← NEXT, gender filter, dropdown logic
-│   │       ├── camera.js           ← camera promo box + redirect
-│   │       ├── modals.js           ← CTA modals, room entry
-│   │       ├── online.js           ← real online count with smooth animation
-│   │       ├── crop.js             ← video crop/positioning (CSS object-fit for iframes)
-│   │       ├── brain.js            ← session personalization (tag tracking, scoring)
-│   │       ├── events.js           ← analytics event dispatching
-│   │       └── ab.js               ← A/B test variant assignment
+│   ├── frontend/                   ← roulette app (React SPA — Vite + TypeScript + Tailwind)
+│   │   ├── package.json
+│   │   ├── vite.config.ts          ← React-SWC, @ alias, /api proxy
+│   │   ├── tailwind.config.ts      ← design tokens, animations
+│   │   ├── tsconfig.json
+│   │   ├── index.html              ← SPA entry with meta tags
+│   │   └── src/
+│   │       ├── main.tsx             ← React root render
+│   │       ├── App.tsx              ← Renders <Index />
+│   │       ├── index.css            ← CSS variables, glass, grain, gradients
+│   │       ├── pages/
+│   │       │   └── Index.tsx        ← Screen state machine (age-gate → splash → roulette)
+│   │       ├── components/
+│   │       │   ├── AgeGate.tsx      ← 18+ verification gate
+│   │       │   ├── StartScreen.tsx  ← Splash with live count + CTA
+│   │       │   ├── RouletteView.tsx ← Main roulette (API-connected, preloading, gestures)
+│   │       │   ├── TopBar.tsx       ← Gender filter pills + live viewer count
+│   │       │   ├── ActionStack.tsx  ← TikTok-style right-rail actions
+│   │       │   ├── GenderFilterSheet.tsx ← Bottom sheet filter (swipe to dismiss)
+│   │       │   ├── PerformerProfile.tsx  ← Right panel (swipe to dismiss)
+│   │       │   └── ThumbnailOverlay.tsx ← Performer image while iframe loads
+│   │       ├── services/
+│   │       │   ├── api.ts           ← fetchNextPerformer, fetchPoolStats, fetchConfig
+│   │       │   ├── session.ts       ← Session ID (32-char hex), visitor ID, session rotation
+│   │       │   ├── iframe-manager.ts ← Dual iframe system (preload, crossfade, center-crop, memory cleanup)
+│   │       │   ├── brain.ts         ← Client-side personalization (30-dim tag vector, localStorage)
+│   │       │   ├── tracker.ts       ← EventTracker (batch queue, flushes every 30s or on unload)
+│   │       │   ├── ab.ts            ← A/B test variant assignment + significance calculator
+│   │       │   └── cta-timing.ts    ← Engagement-based CTA progression (6 phases)
+│   │       └── lib/
+│   │           └── utils.ts         ← cn() utility (clsx + tailwind-merge)
 │   │
 │   ├── api/                        ← backend server (Fastify + TypeScript)
 │   │   ├── src/
@@ -264,13 +274,17 @@ xcamvip/
 │   │   │   ├── routes/
 │   │   │   │   ├── pool.ts         ← GET /api/pool/next, /api/pool/stats
 │   │   │   │   ├── events.ts       ← POST /api/events
-│   │   │   │   ├── config.ts       ← GET /api/config (public frontend config)
+│   │   │   │   ├── health.ts       ← GET /api/health
+│   │   │   │   ├── config.ts       ← GET /api/config (CTA text, feature flags, A/B defs)
 │   │   │   │   └── admin.ts        ← /api/admin/* (dashboard endpoints, auth required)
 │   │   │   ├── services/
-│   │   │   │   ├── pool-fetcher.ts ← Chaturbate API polling + Redis caching
-│   │   │   │   ├── pool-matcher.ts ← weighted selection, personalization scoring
-│   │   │   │   ├── event-logger.ts ← analytics event storage in MySQL
-│   │   │   │   └── cron.ts         ← node-cron job definitions (pool refresh, status checks)
+│   │   │   │   ├── pool-fetcher.ts ← Chaturbate API polling + Redis caching (tag normalization, quality scoring)
+│   │   │   │   ├── pool-matcher.ts ← Weighted selection with personalization (alpha blending, 30% exploration)
+│   │   │   │   ├── session.ts      ← Session exclusion (Redis SADD/SISMEMBER), validation
+│   │   │   │   ├── event-logger.ts ← Batch INSERT to MySQL events table (memory fallback)
+│   │   │   │   └── cron.ts         ← node-cron job definitions (pool refresh every 60s)
+│   │   │   ├── db.ts               ← MySQL connection pool (optional — graceful degradation)
+│   │   │   ├── redis.ts            ← Redis connection with MemoryStore fallback for local dev
 │   │   │   └── middleware/
 │   │   │       └── auth.ts         ← dashboard JWT authentication
 │   │   ├── package.json
@@ -1084,6 +1098,62 @@ Mobile traffic in this vertical: ~95%+ (Pornhub reports 96% mobile).
 
 ---
 
+## Research & Design Workflow
+
+### Research Process
+Research prompts live in `researches/todo/`, results in `researches/results/`.
+Claude Code writes prompts → Victor runs them through ChatGPT/Claude web → results pasted back.
+
+**Round 1 (Design Phase — COMPLETED):**
+- 01: TikTok-style video UX (psychology, gestures, transitions)
+- 02: Adult entertainment UX & conversion patterns
+- 03: Similar projects & visual inspiration
+- Synthesis: `researches/results/research-synthesis.md` (635 lines — the design playbook)
+
+**Round 2 (Build Phase):**
+- 04: Personalization & recommendation systems — **COMPLETE** (`researches/results/04-personalization-recommendation.md`)
+- 05: Iframe/embed performance on mobile — **COMPLETE** (`researches/results/5th.md`)
+- 06: Analytics event design & A/B testing — **COMPLETE** (`researches/results/analytics-research.md`)
+
+### Lovable Visual Design
+Lovable AI generates the visual UI foundation from detailed specs. We build the real
+frontend on top of its design language — extracting CSS variables, component patterns,
+and layout decisions.
+
+**Prompt 1** (`lovable/01-roulette-app.md`): Age gate, start screen, roulette overlay
+with all overlays (top bar, right-side actions, bottom info, CTA), gender filter bottom
+sheet, performer quick profile panel, responsive design, micro-interactions. **BUILT.**
+
+**Prompt 2** (`lovable/02-content-pages.md`): Model profile page, blog post page, blog
+listing/category hub, shared navigation (navbar + footer), brand cohesion. **In progress.**
+
+**After Lovable delivers:** Review output → extract design system (CSS variables, component
+patterns) → verify against research specs → build real frontend using the visual language.
+Small adjustments done in code here; fundamental direction changes go back to Lovable.
+
+### Design System Reference (from Research Synthesis)
+Full design tokens are in `researches/results/research-synthesis.md`. Key values:
+
+**Color palette:** `#000000` base, `#FE2C55` primary accent (TikTok hot pink), `#00F0FF`
+secondary (electric cyan), `#FFD740` gold, `#BB86FC` purple, `#00F891` success/online.
+60-30-10 rule: 60% dark background, 30% surface colors, 10% accent.
+
+**Typography:** Inter font. Username 15-17px bold, description 13-14px regular, CTA 15-16px
+bold ALL-CAPS, tags 11px medium ALL-CAPS. Text shadow on all overlay text.
+`font-variant-numeric: tabular-nums` on all counters.
+
+**Icons:** Outlined default, filled on active. 32-36px visual size, 48px touch target.
+Phosphor Icons or Lucide.
+
+**Shapes:** Overlay cards 20-24px squircle, buttons 12-14px, CTAs full pill, avatars circle.
+
+**Glassmorphism:** `rgba(0,0,0,0.6)` background + `backdrop-filter: blur(20px)` +
+`1px solid rgba(255,255,255,0.08)` border.
+
+**All colors stored as CSS custom properties** for future dashboard control.
+
+---
+
 ## What Is NOT in Scope (Yet)
 
 - SEO content engine implementation (architecture documented above, build after roulette)
@@ -1125,16 +1195,67 @@ Victor must be able to pause/override any agent, agents failing must never break
 
 ## Build Order
 
-1. **Backend API** — Fastify server, pool fetcher, Redis cache, `/api/pool/next`
-2. **Frontend roulette** — HTML shell, CSS, dual iframe system, swipe, controls
-3. **Integration** — frontend talks to API, performers load, transitions work
-4. **Personalization Phase 1** — client-side brain, `prefer_tags` param
-5. **Analytics** — event tracking, events table
-6. **Dashboard MVP** — React SPA, config management, basic metrics
-7. **A/B testing** — variant assignment, dashboard comparison
-8. **Health checks + tests** — automated monitoring
-9. **Content engine Phase 1** — model page generator, HTML renderer, 20 test pages
-10. **Content engine scale** — validation, related models, blog posts, category hubs
+1. ~~**Backend API scaffold**~~ ✓ — Fastify server, pool fetcher, Redis cache, session exclusion, routes
+2. ~~**Research Round 1 + Lovable design specs**~~ ✓ — 3 researches + synthesis + 2 Lovable prompts
+3. ~~**Lovable visual design**~~ ✓ — Prompt 1 built, output in `lovable/velvet-stream-main/`
+4. ~~**Research Round 2**~~ ✓ — All 3 researches complete (04, 05, 06)
+5. ~~**Phase 0: Move Lovable into monorepo**~~ ✓ — React SPA in `packages/frontend/` (Vite + Tailwind)
+6. ~~**Phase 1: Fix Lovable gaps**~~ ✓ — Swipe threshold, overlay auto-hide, double-tap hint, panel dismissals, green dot, legal links
+7. ~~**Phase 2: Wire frontend to real API**~~ ✓ — Service layer, API-connected roulette, real online count, gender filter, CTA links, config route
+8. ~~**Phase 3: Real video**~~ ✓ — Dual iframe system (iframe-manager.ts), preloading, opacity crossfade, thumbnail overlay, click-blocker, iOS/Android detection, visibilitychange cleanup
+9. ~~**Phase 4: Analytics**~~ ✓ — 15 event types, batch EventTracker (flushes every 30s), MySQL batch INSERT persistence with memory fallback, watch timer
+10. ~~**Phase 5: Personalization**~~ ✓ — Client-side brain (brain.ts), tag preference vector, exponential decay, alpha ramping, boredom detection, backend pool-matcher with blended scoring, first-like feedback toast
+11. ~~**Phase 6: Deployment**~~ ✓ — PM2 ecosystem.config.cjs, nginx.conf, deploy.sh, CORS restriction, JSON production logging
+12. ~~**Phase 7: A/B testing**~~ ✓ — Variant assignment (localStorage), two-proportion Z-test significance calculator, 2 running tests (start_screen, cta_copy), config-driven
+13. ~~**Phase 8: CTA timing**~~ ✓ — Engagement-based CTA progression (6 phases: hidden→soft→curiosity→first→pressure→direct), dynamic gender-aware copy, session timer
+14. ~~**Phase 9: Tests**~~ ✓ — 17 unit tests (cta-timing, pool-matcher), health check script, vitest setup
+15. **Dashboard MVP** — React SPA, config management, basic metrics
+16. **Content engine** — Model pages, blog posts, static HTML generation
+
+---
+
+## Local Development
+
+### Prerequisites
+- Node.js 20+ LTS
+- No Redis or MySQL required (both have in-memory fallbacks)
+
+### Quick Start
+```bash
+# Install dependencies (from repo root)
+npm install
+
+# Terminal 1: Start API server (port 3001)
+cd packages/api
+npm run dev
+# → Fetches 1000+ real performers from Chaturbate on startup
+# → Falls back to MemoryStore if no Redis installed
+
+# Terminal 2: Start frontend dev server (port 5173)
+cd packages/frontend
+npm run dev
+# → Vite proxies /api/* to localhost:3001
+```
+
+### Environment
+API reads from `packages/api/.env` (already created for local dev):
+```
+PORT=3001
+CB_API_URL=https://chaturbate.com/api/public/affiliates/onlinerooms/
+CB_API_TOKEN=          # Not needed — public API uses wm param
+AFFILIATE_CAMPAIGN=roGHG
+AFFILIATE_TOUR=9oGW
+AFFILIATE_TRACK=wetroulette
+REDIS_URL=redis://localhost:6379
+MYSQL_HOST=localhost
+MYSQL_PASSWORD=        # Empty = MySQL disabled, events buffer in memory
+```
+
+### Key URLs
+- Frontend: `http://localhost:5173`
+- API health: `http://localhost:3001/api/health`
+- Pool stats: `http://localhost:3001/api/pool/stats`
+- Embed test page: `http://localhost:5173/test-embed.html`
 
 ---
 

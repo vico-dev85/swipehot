@@ -34,6 +34,13 @@ export async function getSeenCount(sessionId: string): Promise<number> {
   return redis.scard(key);
 }
 
+export async function getSeenSet(sessionId: string): Promise<Set<string>> {
+  const redis = getRedis();
+  const key = `${SESSION_KEY_PREFIX}${sessionId}`;
+  const members = await redis.smembers(key);
+  return new Set(members);
+}
+
 // Validate session ID: must be alphanumeric, 16-64 chars
 export function isValidSessionId(id: unknown): id is string {
   if (typeof id !== 'string') return false;

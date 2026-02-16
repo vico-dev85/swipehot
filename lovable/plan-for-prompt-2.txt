@@ -1,0 +1,128 @@
+
+
+# Content Pages: Model Profile, Blog Post, Blog Listing
+
+## Overview
+Add three SEO content pages plus shared navigation (navbar + footer) that match the existing xcam.vip design system. These pages use the `#0A0A12` tinted background for readability and share all existing brand tokens.
+
+---
+
+## New Data Files
+
+### `src/data/blog-posts.ts`
+- Export a `BlogPost` interface and array of 6 placeholder blog posts with title, slug, category, date, readTime, and excerpt
+- Include a longer `content` field (HTML string) for the featured blog post ("best-latina-cam-models-2026")
+
+### `src/data/models.ts`
+- Export a `Model` interface extending the existing `Performer` type with additional fields: `slug`, `rating`, `lastOnline`, `online` (boolean), `longBio` (multi-paragraph), `schedule` (day/time blocks)
+- Map existing performers into this format plus add 3-4 more for the related/grid sections
+
+---
+
+## Shared Layout Components
+
+### `src/components/ContentNavbar.tsx`
+- Fixed top bar, 56px height, glassmorphism background
+- Mobile: xcam.vip mini wordmark (left), hamburger icon (right)
+- Desktop (1024px+): wordmark left, center nav links (Roulette | Models | Blog | Live Now), right online counter
+- Active link uses accent-primary color
+- Hamburger opens a full-screen glass overlay menu with large tappable rows
+
+### `src/components/ContentFooter.tsx`
+- Background `#0A0A12`, 4-column grid (stacked on mobile)
+- Sections: Explore, Categories, About, Follow (placeholder social icons)
+- Bottom copyright bar in text-tertiary
+
+### `src/components/ContentLayout.tsx`
+- Wrapper component that renders `ContentNavbar` + children + `ContentFooter`
+- Applies `bg-[#0A0A12]` and `min-h-screen`
+- Used by all three content pages
+
+---
+
+## Page 1: Model Profile Page
+
+### Route: `/models/:slug`
+### File: `src/pages/ModelProfile.tsx`
+
+**Sections (top to bottom):**
+
+1. **Hero** (~50vh): Dark gradient placeholder with performer avatar. If online: pulsing "LIVE NOW" badge in green. If offline: dimmed avatar + "Currently Offline" text. Bottom gradient overlay with name (24px bold), verified badge, tag pills. CTA button at hero bottom.
+
+2. **Stats Bar**: Horizontal glass card row -- viewers, likes, rating, last online. Icons + numbers + labels, evenly spaced.
+
+3. **About Section**: Heading "About [Name]", 3 paragraphs of placeholder bio text, `max-w-3xl` centered, `text-secondary` color, `leading-[1.7]`.
+
+4. **Tags Section**: Heading "Categories & Tags", wrapped pill chips with outlined borders.
+
+5. **Related Models**: Heading "Similar Models You'll Love", horizontal scroll on mobile / 3-col grid on desktop. Square cards with gradient bg, name, tag, optional green LIVE dot. Scale hover effect.
+
+6. **Schedule Section**: Heading "When She's Usually Online", 7-day grid (Mon-Sun) with highlighted time blocks for Mon/Wed/Fri evenings.
+
+7. **Bottom CTA**: Full-width dark card with gradient, "Don't miss her next show" text, CTA button.
+
+**Desktop (1024px+):** Hero becomes two-column (60% video left, 40% info right). Right sidebar with "More Live Models" vertical list.
+
+---
+
+## Page 2: Blog Post Page
+
+### Route: `/blog/:slug`
+### File: `src/pages/BlogPost.tsx`
+
+**Sections:**
+
+1. **Hero** (~40vh): CSS gradient with aurora/mesh effect in brand colors at low opacity. Category pill badge, title (28px bold, 36px desktop), author/date/read-time line.
+
+2. **Article Body** (max-w-3xl centered):
+   - Styled prose: H2 (22px bold), H3 (18px semibold), body text (16px, text-secondary, line-height 1.8)
+   - Links in `#00F0FF`, blockquotes with left `#FE2C55` border
+   - Bullet lists with accent-primary colored dots
+
+3. **Inline Model Callout Cards**: Elevated dark cards (`#1A1A1A`) embedded between paragraphs. Avatar, name, tag, LIVE badge, "Watch Her Live" text link.
+
+4. **Table of Contents**: Desktop -- sticky left sidebar (200px). Mobile -- collapsible button at top of article. Lists H2s as links, current section highlighted.
+
+5. **Related Articles** (bottom): 3 cards (stacked mobile, 3-col desktop). Dark elevated card with gradient area, category pill, title, excerpt, date. Hover lift effect.
+
+6. **Bottom CTA Banner**: Full-width card with accent gradient, "Ready to explore?" heading, "Start Watching" pill button linking to roulette.
+
+**Desktop:** Sticky TOC on left, "Popular Models" sidebar widget on right.
+
+---
+
+## Page 3: Blog Listing Page
+
+### Route: `/blog`
+### File: `src/pages/BlogListing.tsx`
+
+**Sections:**
+
+1. **Header**: Page title "xcam.vip Blog" (28px bold), subtitle, optional filter pills for categories.
+
+2. **Content Grid**: Cards stacked on mobile, 3-col on desktop. Each card: dark elevated `#1A1A1A`, gradient top area with category pill, title (18px bold), excerpt (13px, 2 lines), date/read-time. Hover lift effect.
+
+3. **Pagination**: "Load More" ghost button at bottom.
+
+---
+
+## Routing Updates
+
+### `src/App.tsx`
+Add three new routes before the catch-all:
+```
+/models/:slug  ->  ModelProfile
+/blog          ->  BlogListing
+/blog/:slug    ->  BlogPost
+```
+
+---
+
+## Technical Notes
+
+- All content pages use `ContentLayout` wrapper (navbar + footer). The roulette (`/`) does NOT use this layout.
+- Performer data is extended into a `models.ts` file with slugs and additional fields; the roulette continues using the existing `performers.ts`.
+- No new dependencies needed -- uses existing framer-motion, lucide-react, and tailwind utilities.
+- All pages are mobile-first with responsive breakpoints at `md` (768px) and `lg` (1024px).
+- Blog post content is hardcoded HTML/JSX for the prototype -- no markdown parsing needed.
+

@@ -1,34 +1,51 @@
 import type { FastifyInstance } from 'fastify';
-import type { GenderFilter, PerformerResponse } from '@xcamvip/shared';
+import type { GenderFilter, PerformerResponse, CachedPerformer } from '@xcamvip/shared';
 import { getPool } from '../services/pool-fetcher.js';
-import { markSeen, hasSeen, isValidSessionId } from '../services/session.js';
+import { markSeen, isValidSessionId, getSeenSet } from '../services/session.js';
+import { selectPerformer } from '../services/pool-matcher.js';
 import { config } from '../config.js';
 
-// Build the affiliate embed URL from raw iframe URL
-function buildEmbedUrl(rawEmbed: string): string {
-  try {
-    const url = new URL(rawEmbed);
-    url.searchParams.set('campaign', config.affiliate.campaign);
-    url.searchParams.set('tour', config.affiliate.tour);
-    url.searchParams.set('track', config.affiliate.track);
-    url.searchParams.set('disable_sound', '1');
-    return url.toString();
-  } catch {
-    return rawEmbed;
-  }
+/**
+ * Build embed URL using /embed/{username}/ path.
+ *
+ * IMPORTANT: The Chaturbate API's iframe_embed field uses /in/ which is a 302 redirect —
+ * that does NOT work as an iframe src. The actual embeddable player lives at /embed/{username}/.
+ *
+ * We use chaturbate.com directly for now. When the white label domain (www.xcam.vip) SSL
+ * is working, switch embedDomain to config.whitelabelDomain to avoid ad blockers.
+ */
+function buildEmbedUrl(performer: CachedPerformer): string {
+  const embedDomain = 'chaturbate.com';
+  const uname = encodeURIComponent(performer.username);
+  const url = new URL(`https://${embedDomain}/embed/${uname}/`);
+  url.searchParams.set('campaign', config.affiliate.campaign);
+  url.searchParams.set('tour', config.affiliate.tour);
+  url.searchParams.set('track', config.affiliate.track);
+  url.searchParams.set('room', performer.username);
+  url.searchParams.set('disable_sound', '1');
+  url.searchParams.set('embed_video_only', '1');
+  url.searchParams.set('join_overlay', '1');
+  url.searchParams.set('mobileRedirect', 'auto');
+  return url.toString();
 }
 
-// Build the affiliate room URL for CTA click-through
-function buildRoomUrl(chatRoomUrl: string): string {
-  try {
-    const url = new URL(chatRoomUrl);
-    url.searchParams.set('campaign', config.affiliate.campaign);
-    url.searchParams.set('tour', config.affiliate.tour);
-    url.searchParams.set('track', config.affiliate.track);
-    return url.toString();
-  } catch {
-    return chatRoomUrl;
-  }
+/**
+ * Build CTA room URL — opens performer's full room page with affiliate tracking.
+ * Uses /in/ path which redirects to the room (correct for click-through, NOT for embedding).
+ *
+ * `track` = aggregate traffic source bucket (for Chaturbate stats page reports)
+ * `sid`   = unique click ID (session + performer) — sent in postbacks for per-click attribution
+ */
+function buildRoomUrl(performer: CachedPerformer, sessionId: string): string {
+  const domain = config.whitelabelDomain;
+  const url = new URL(`https://${domain}/in/`);
+  url.searchParams.set('tour', config.affiliate.tour);
+  url.searchParams.set('campaign', config.affiliate.campaign);
+  url.searchParams.set('track', config.affiliate.track);
+  url.searchParams.set('room', performer.username);
+  // sid = unique click ID for postback conversion tracking
+  url.searchParams.set('sid', `${sessionId}_${performer.username}`);
+  return url.toString();
 }
 
 export async function poolRoutes(fastify: FastifyInstance): Promise<void> {
@@ -39,9 +56,10 @@ export async function poolRoutes(fastify: FastifyInstance): Promise<void> {
       session_id?: string;
       gender?: string;
       prefer_tags?: string;
+      alpha?: string;
     };
   }>('/api/pool/next', async (request, reply) => {
-    const { session_id, gender, prefer_tags } = request.query;
+    const { session_id, gender, prefer_tags, alpha: alphaStr } = request.query;
 
     // Validate session ID
     if (!session_id || !isValidSessionId(session_id)) {
@@ -61,31 +79,18 @@ export async function poolRoutes(fastify: FastifyInstance): Promise<void> {
     }
 
     // Parse preferred tags for personalization scoring
-    const preferredTags = prefer_tags
+    const preferTags = prefer_tags
       ? prefer_tags.split(',').map(t => t.trim().toLowerCase())
       : [];
 
-    // Find first unseen performer, with optional tag-preference scoring
-    let bestMatch: typeof pool[number] | null = null;
-    let bestScore = -Infinity;
+    // Parse alpha (personalization blend ratio from client brain)
+    const alpha = alphaStr ? Math.min(0.85, Math.max(0, parseFloat(alphaStr) || 0)) : 0;
 
-    for (const performer of pool) {
-      // Session exclusion check
-      const seen = await hasSeen(session_id, performer.username);
-      if (seen) continue;
+    // Get seen set for session exclusion
+    const seenUsernames = await getSeenSet(session_id);
 
-      // Simple scoring: quality_score + tag overlap bonus
-      let score = performer.quality_score;
-      if (preferredTags.length > 0) {
-        const overlap = performer.normalized_tags.filter(t => preferredTags.includes(t)).length;
-        score += overlap * 10; // 10 points per matching tag
-      }
-
-      if (score > bestScore) {
-        bestScore = score;
-        bestMatch = performer;
-      }
-    }
+    // Use pool-matcher for personalized selection
+    let bestMatch = selectPerformer({ pool, seenUsernames, preferTags: preferTags, alpha });
 
     // If all performers seen, return random from pool (session will rotate soon)
     if (!bestMatch) {
@@ -95,7 +100,7 @@ export async function poolRoutes(fastify: FastifyInstance): Promise<void> {
     // Mark as seen
     await markSeen(session_id, bestMatch.username);
 
-    // Build response (never expose raw pool data — security fix from re-review)
+    // Build response
     const response: PerformerResponse = {
       username: bestMatch.username,
       display_name: bestMatch.display_name,
@@ -104,8 +109,8 @@ export async function poolRoutes(fastify: FastifyInstance): Promise<void> {
       num_users: bestMatch.num_users,
       tags: bestMatch.normalized_tags,
       image_url: bestMatch.image_url,
-      embed_url: buildEmbedUrl(bestMatch.iframe_embed),
-      room_url: buildRoomUrl(bestMatch.chat_room_url),
+      embed_url: buildEmbedUrl(bestMatch),
+      room_url: buildRoomUrl(bestMatch, session_id),
       room_subject: bestMatch.room_subject,
       is_hd: bestMatch.is_hd,
     };

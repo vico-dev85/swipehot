@@ -12,8 +12,17 @@
   ],
   "scripts": {
     "dev": "npm run dev --workspace=packages/api",
+    "dev:frontend": "npm run dev --workspace=packages/frontend",
+    "dev:all": "npm run dev --workspace=packages/api & npm run dev --workspace=packages/frontend",
     "build": "npm run build --workspace=packages/shared && npm run build --workspace=packages/api",
+    "build:frontend": "npm run build --workspace=packages/frontend",
+    "build:prod": "npm run build --workspace=packages/shared && npm run build --workspace=packages/api && npm run build --workspace=packages/frontend",
     "start": "npm run start --workspace=packages/api",
+    "preview:frontend": "npm run preview --workspace=packages/frontend",
+    "test": "npm test --workspace=packages/api && npm test --workspace=packages/frontend",
+    "test:api": "npm test --workspace=packages/api",
+    "test:frontend": "npm test --workspace=packages/frontend",
+    "health": "npx tsx tests/health-check.ts",
     "lint": "eslint packages/*/src/**/*.ts",
     "typecheck": "tsc --noEmit --project packages/api/tsconfig.json"
   },

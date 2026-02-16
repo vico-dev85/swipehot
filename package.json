@@ -1,0 +1,23 @@
+{
+  "name": "xcamvip",
+  "version": "0.1.0",
+  "private": true,
+  "description": "xcam.vip — Live cam roulette platform",
+  "workspaces": [
+    "packages/shared",
+    "packages/api",
+    "packages/frontend",
+    "packages/dashboard",
+    "packages/content-engine"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=packages/api",
+    "build": "npm run build --workspace=packages/shared && npm run build --workspace=packages/api",
+    "start": "npm run start --workspace=packages/api",
+    "lint": "eslint packages/*/src/**/*.ts",
+    "typecheck": "tsc --noEmit --project packages/api/tsconfig.json"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

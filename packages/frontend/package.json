@@ -1,0 +1,6 @@
+{
+  "name": "@xcamvip/frontend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Roulette frontend — vanilla JS, no build step"
+}

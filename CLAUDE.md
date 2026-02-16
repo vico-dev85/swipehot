@@ -64,15 +64,69 @@ MORE of a specific performer:
 The "Enter Room" CTA is always visible and prominent. Opens in a new tab.
 Configurable destination: direct to performer's room OR registration page (A/B testable).
 
+### Conversion Psychology (from UX research)
+Three forces drive conversion in this format:
+1. **Parasocial bonding** — live streaming creates "one-and-a-half sided" relationships
+   stronger than traditional one-sided parasocial bonds. Brief roulette encounters create
+   micro-connections; being rotated away triggers loss aversion ("I need to get back to her").
+2. **Variable-ratio reinforcement** — identical to slot machines. Each swipe might reveal
+   someone extraordinary. Unpredictable rewards trigger stronger dopamine responses.
+   The roulette IS the free value; the dopamine loop keeps users engaged long enough
+   for conversion triggers to work naturally.
+3. **Zeigarnik Effect** — people remember uncompleted experiences 2x better. Being rotated
+   away before resolution creates an open loop that clicking through resolves.
+
+### CTA Timing Framework
+Surface conversion prompts at moments of peak engagement, not on a timer:
+
+| Session Phase | What to Show | Rationale |
+|---|---|---|
+| 0-30 seconds | Nothing — let user experience freely | Build value first |
+| 30-60 seconds | Soft signals only (viewer count, LIVE badge) | Social proof, no ask |
+| 1-2 minutes | Curiosity builders ("X just tipped") | Create curiosity |
+| 2-3 minutes | First CTA: "Watch Her Live →" | User has demonstrated engagement |
+| 3-5 minutes | Social pressure: "2,341 viewers" | Urgency + social proof |
+| 5+ minutes | Direct: "See her full show — Free" | User is clearly invested |
+| Return visit | Personalized: "Welcome back! [Model] is live" | Leverage prior engagement |
+
+Key data: Timing prompts to peak-value moments yields 2-3x better conversion than static
+placement. Reducing to a single CTA increased conversion by 266%. Personalized CTAs
+convert 202% more than untargeted ones.
+
+### CTA Copy (Ranked by Effectiveness)
+1. **"Watch Her Live →"** — action-oriented, personal ("her"), implies immediacy
+2. **"Enter Free"** — eliminates cost objection, low commitment
+3. **"See Full Show"** — curiosity gap, implies partial version
+4. **"Join 2,341 Viewers"** — social proof + action combined
+5. **"Continue Watching"** — implies continuity, best for session timeout
+
+**Avoid:** "Click Here," "Sign Up Now," "Register," "Buy Tokens," "Visit [SiteName]"
+**Principle:** Frame the CTA as continuing the experience, not starting a transaction.
+
 ### Local Camera Box
 The webcam PiP box does NOT show the user's camera. Instead, tapping it promotes
 1-on-1 private cam sites (configurable destination URL via dashboard). The specific
 sites and ad copy will be managed through the admin dashboard.
 
-### Navigation
+### Navigation & Gesture Specs (from UX research)
 - **Mobile** (primary): Swipe up = next, swipe down = previous. Buttons also visible.
 - **Desktop**: NEXT button, keyboard shortcuts possible later.
-- Transitions must be TikTok-fast: preloaded iframes, instant swap, minimal loading indicator.
+- **Swipe threshold:** ~20% of screen height OR velocity ~2000 px/s (fast flick)
+- **Swipe animation:** 300-400ms, spring physics (stiffness: 300, damping: 30)
+- **Style:** Vertical slide (old video slides out, new slides in) — NOT crossfade
+- **Sub-threshold swipe:** Rubber-band snap-back with subtle haptic feedback
+- **Double-tap:** Like/heart — appears at tap coordinates, 800ms spring scale animation
+- **Haptic feedback:** Short vibration on swipe complete, snap-back, and double-tap like
+- **Content preloading:** Next 1-2 streams always pre-buffered while current plays
+
+### Like/Heart Engagement Signal
+Double-tap on video triggers a heart animation + feeds personalization:
+- Heart appears at tap point: #FE2C55, ~80px, scale 0→1.2→0.95→1.05→1.0, 800ms
+- Right-rail heart icon fills from outlined to solid #FE2C55
+- First-time contextual hint: "Double-tap to like" after ~8 seconds of watching
+- After first like: feedback "We'll show you more like this"
+- **What it does:** Explicit positive signal for personalization — liked performer's tags
+  get boosted in the scoring formula. Much stronger signal than dwell time alone.
 
 ### Online Counter
 Real data from Chaturbate API — sum of `num_users` across the cached pool.
@@ -594,12 +648,28 @@ Every meaningful user action fires a lightweight event to `POST /api/events`:
 Events tracked:
 `page_load`, `start_click`, `performer_shown`, `performer_skipped`,
 `performer_watched`, `cta_click`, `swipe_next`, `swipe_back`,
-`filter_change`, `camera_click`
+`filter_change`, `camera_click`, `performer_liked`, `share`
 
 For `performer_watched`: includes `watch_seconds`, `tags`, `gender`, `username`
 For `cta_click`: includes `destination_url`, `performer_username`
+For `performer_liked`: includes `performer_username`, `tags`, `watch_seconds_before_like`
 
 Stored in MySQL `events` table. Feeds both the analytics dashboard AND personalization.
+
+### Engagement Signal Strength (for personalization weighting)
+
+| Signal | Strength | How Measured |
+|---|---|---|
+| Watch < 2s then skip | Negative | JS timer |
+| Watch 2-10s | Neutral | JS timer |
+| Watch 10-30s | Positive | JS timer |
+| Watch 30+ seconds | Strong positive | JS timer |
+| Double-tap like | Strong positive | Tap event |
+| Click "Enter Room" CTA | Strongest positive | Click event |
+| Gender filter selection | Explicit preference | Filter change |
+| Swipe velocity | Engagement proxy | Fast = browsing, slow = considering |
+| Return visit to same model | Retention signal | Session comparison |
+| Swipe back (go to previous) | Positive (wanted to return) | Swipe event |
 
 ### Dashboard Metrics
 | Category | Metrics |
@@ -978,9 +1048,28 @@ Automated via Playwright.
 
 ---
 
+## Performance Targets (from UX research)
+
+| Metric | Target | Why |
+|---|---|---|
+| Time to first stream playing | < 2 seconds | 53% of mobile users leave if > 3s |
+| Swipe-to-next-stream latency | < 1 second perceived | Pre-buffer next 1-2 streams |
+| Initial page weight | < 500KB | Defer non-critical JS |
+| LCP (Largest Contentful Paint) | < 2.5 seconds | Google Core Web Vitals threshold |
+| Swipe animation | 300-400ms spring | TikTok-standard snappiness |
+| Animation frame rate | 60fps minimum | Only animate transform + opacity |
+| Overlay auto-hide | 5 seconds inactivity | Don't cover live video |
+| Content page load (model/blog) | < 2 seconds | Pre-rendered static HTML via nginx |
+
+Key benchmarks: Each additional second of load time drops conversion by 4.42%.
+Bounce probability: +32% at 3s, +90% at 5s, +123% at 10s. A 0.1s improvement in
+mobile speed reduces bounce by 8.3%. Sites loading < 2s see 9% average bounce rate.
+
+Mobile traffic in this vertical: ~95%+ (Pornhub reports 96% mobile).
+
 ## Design Principles
 
-1. **Mobile-first** — majority of traffic is mobile
+1. **Mobile-first** — 95%+ of traffic is mobile, design for phones first
 2. **Speed over polish** — fast transitions beat pretty animations
 3. **No fake elements** — real data, honest UI
 4. **Everything configurable** — ad slots, CTAs, colors, algorithm tuning — all in dashboard
@@ -989,6 +1078,9 @@ Automated via Playwright.
 7. **Modular** — each JS/CSS file has one job, each service has one responsibility
 8. **SEO-native** — content pages are pre-rendered HTML with full meta/schema from day one
 9. **Future-proof** — shared types, embed utilities, analytics designed for both roulette and content engine
+10. **Retention-first** — design for repeat visits, not just single-session conversion
+11. **Single CTA per screen** — never show competing CTAs simultaneously (+266% conversion)
+12. **Behavioral timing** — surface prompts at peak engagement, not on timers
 
 ---
 

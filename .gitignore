@@ -26,8 +26,8 @@ dist/
 build/
 *.log
 
-# WordPress uploads (if any local copies)
-uploads/
+# Package lock (use npm workspaces root lock only)
+packages/*/package-lock.json
 
 # Temp files
 *.tmp

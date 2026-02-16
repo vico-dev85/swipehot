@@ -330,9 +330,9 @@ any changes. If something breaks, roll back to the last passing commit.
 
 ---
 
-## SEO Content Engine (Planned Expansion)
+## SEO Content Engine — Technical Specification
 
-### The Vision
+### Vision
 Transform xcam.vip from a single-page roulette into a full content site with
 thousands of indexable pages, all driving organic Google traffic back to the
 roulette and the white label.
@@ -344,42 +344,409 @@ roulette and the white label.
 - Live Chaturbate embed when model is online (using same embed system as roulette)
 - "Offline" state: CTA + similar models + "get notified when online"
 - Tags, categories, viewer stats from Chaturbate API
-- Related models section (auto-linking)
+- Related models section (auto-linking, dynamic)
 
 **Blog Posts** (`/blog/{keyword-slug}`)
 - AI-generated strategic articles (1,500–2,500 words)
 - Target general keywords: "best latina cams", "chaturbate guide", "free tokens"
 - Heavy internal linking to model pages
-- Research-driven, unique content per keyword
+- Research-driven: analyze competing articles before writing
 
-### Intelligent Internal Linking
-- **Dynamic, not static** — model pages query DB for related models on load
-- **Bidirectional** — adding a new model page automatically appears in related sections of similar models
-- **Blog → Model** — articles link contextually to relevant model pages
-- **Category hubs** — `/latina-cams`, `/asian-cams` → auto-updating model grids
-- **Varied anchor text** — AI-generated, not repetitive
-- Link density: ~1 link per 100 words in blog posts, 5–8 related models per model page
+### Database Schema (WordPress MySQL)
 
-### Architecture
-The content engine is a **standalone pipeline** (not a WordPress plugin):
+```sql
+-- Model profile pages (generated content + metadata)
+CREATE TABLE wp_xcam_models (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    model_name VARCHAR(100) UNIQUE NOT NULL,
+    chaturbate_username VARCHAR(100) NOT NULL,
+    display_name VARCHAR(200),
+    bio TEXT,
+    categories JSON,          -- ["latina", "interactive", "toys"]
+    tags JSON,                -- ["bigboobs", "lovense", "squirt"]
+    status ENUM('pending', 'active', 'inactive', 'removed') DEFAULT 'pending',
+    is_currently_online TINYINT(1) DEFAULT 0,
+    last_online_at DATETIME NULL,
+    num_followers INT DEFAULT 0,
+    wordpress_post_id BIGINT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_status (status),
+    INDEX idx_categories ((CAST(categories AS CHAR(500)))),
+    INDEX idx_online (is_currently_online)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Keywords to process (both model names and general SEO keywords)
+CREATE TABLE wp_xcam_keywords (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    keyword VARCHAR(255) NOT NULL,
+    type ENUM('model_name', 'general') NOT NULL,
+    priority INT DEFAULT 0,               -- higher = process first
+    status ENUM('pending', 'processing', 'completed', 'skipped', 'failed') DEFAULT 'pending',
+    error_message TEXT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    processed_at DATETIME NULL,
+    INDEX idx_queue (status, type, priority DESC)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Generated blog posts
+CREATE TABLE wp_xcam_blog_posts (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    keyword_id BIGINT NOT NULL,
+    keyword VARCHAR(255) NOT NULL,
+    title VARCHAR(500),
+    content LONGTEXT,
+    linked_models JSON,                   -- ["miarose", "sophiasmith", "bella"]
+    word_count INT DEFAULT 0,
+    internal_link_count INT DEFAULT 0,
+    wordpress_post_id BIGINT NULL,
+    status ENUM('draft', 'published', 'failed') DEFAULT 'draft',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (keyword_id) REFERENCES wp_xcam_keywords(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Knowledge base entries (the "brain" — platform info, SEO rules, templates)
+CREATE TABLE wp_xcam_knowledge_base (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255),
+    content TEXT,
+    category ENUM('platform_features', 'seo_strategy', 'content_templates', 'model_page_guide', 'blog_post_guide'),
+    tags JSON,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Pipeline run logs (every generation attempt)
+CREATE TABLE wp_xcam_pipeline_runs (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    content_type ENUM('model_page', 'blog_post') NOT NULL,
+    keyword VARCHAR(255),
+    success TINYINT(1) DEFAULT 0,
+    quality_score INT NULL,               -- 0-100
+    error_message TEXT NULL,
+    retry_count INT DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_type_date (content_type, created_at DESC)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ```
-Keyword Queue → Research → AI Writer → Validator → Publish via WP REST API
-```
+
+Note: the roulette's `wp_wr_signals` table (defined in Analytics section) is separate
+but feeds into content prioritization — most-engaged tags = generate those model pages first.
+
+### CLI Commands
+
+The content engine is a standalone TypeScript pipeline (not a WordPress plugin).
 Could reuse the VideoDate.VIP pipeline pattern (TypeScript + Claude API).
-WordPress receives and serves the generated pages.
 
-### How It Connects to the Roulette
+```bash
+# --- Setup & Seeding ---
+
+# Initialize knowledge base with platform info, templates, SEO rules
+npx tsx src/cli/index.ts seed-brain --site xcam
+
+# Import model name keywords from CSV (priority by follower count if available)
+npx tsx src/cli/index.ts seed-keywords --file models.csv --type model_name
+
+# Import general SEO keywords
+npx tsx src/cli/index.ts seed-keywords --file general-keywords.csv --type general
+
+# --- Content Generation ---
+
+# Generate next N model pages (highest priority pending keywords)
+npx tsx src/cli/index.ts generate --type model_page --count 20
+
+# Generate next N blog posts
+npx tsx src/cli/index.ts generate --type blog_post --count 5
+
+# Generate one specific model page
+npx tsx src/cli/index.ts generate --type model_page --keyword miarose
+
+# --- Monitoring ---
+
+# Check online status for all active models (run daily via cron)
+npx tsx src/cli/index.ts check-status --all
+
+# List keyword queue
+npx tsx src/cli/index.ts list-keywords --status pending --type model_name
+
+# List published content
+npx tsx src/cli/index.ts list-models --status active
+npx tsx src/cli/index.ts list-posts --status published
+
+# Rebuild internal links across all published content
+npx tsx src/cli/index.ts update-links
+```
+
+### Model Page Generation Pipeline
+
+```
+Step 1: KEYWORD SELECTION
+  Pull next model_name from wp_xcam_keywords
+  WHERE status='pending' AND type='model_name'
+  ORDER BY priority DESC
+  Mark as 'processing'
+
+Step 2: MODEL VALIDATION
+  Check if model exists on Chaturbate (via pool API or direct CB API)
+  Pull public data: categories, tags, follower count, online status
+  If model doesn't exist or is permanently gone → mark keyword 'skipped'
+
+Step 3: BRAIN CONTEXT
+  Query wp_xcam_knowledge_base for entries matching:
+  ['platform_features', 'model_page_guide', 'seo_strategy']
+  This gives the AI writer context about tone, structure, SEO rules
+
+Step 4: CONTENT GENERATION (Claude API)
+  System prompt includes: model data, brain context, SEO guidelines
+  Generate 400-500 words covering:
+  - Engaging bio with personality
+  - What makes her shows unique
+  - Streaming style / specialties
+  - Why viewers enjoy her content
+  Must feel natural, not templated or spammy
+
+Step 5: VALIDATION
+  - Word count: 300–600 (reject outside range)
+  - Has proper H1 + at least 2 H2s
+  - Model name appears 3–5 times naturally (not stuffed)
+  - Meta description: 120–160 characters
+  - Uniqueness: < 30% similarity to any existing model page
+  - If fails: retry with improved prompt (max 2 retries)
+  - If still fails: mark 'failed', flag for manual review
+
+Step 6: RELATED MODELS
+  Query wp_xcam_models for 5-8 models with overlapping categories
+  WHERE status='active' AND model_name != current
+  ORDER by overlap count DESC, num_followers DESC
+
+Step 7: PUBLISH TO WORDPRESS
+  POST /wp-json/wp/v2/model_pages (custom post type)
+  Include: title, content HTML, meta fields (model_name, categories, related_models)
+  Status: publish
+
+Step 8: UPDATE DATABASE
+  Insert/update wp_xcam_models with all metadata
+  Update wp_xcam_keywords status='completed'
+  Log in wp_xcam_pipeline_runs with quality_score
+```
+
+### Blog Post Generation Pipeline
+
+```
+Step 1: KEYWORD SELECTION
+  Pull from wp_xcam_keywords WHERE type='general' AND status='pending'
+
+Step 2: WEB RESEARCH (recommended)
+  Search Google for the keyword
+  Analyze top 3 competing articles: word count, headings, topics covered, gaps
+  Identify what we can do better or differently
+
+Step 3: BRAIN CONTEXT
+  Platform knowledge + SEO rules + list of available model pages to link to
+
+Step 4: STRATEGIC PLANNING (Claude API — separate call)
+  AI generates a JSON plan before writing:
+  {
+    "title": "Top 10 Latina Cam Models on Chaturbate 2026",
+    "word_count_target": 2000,
+    "sections": ["Introduction", "What Makes a Great...", "Top 10 List", "How to Choose", "Conclusion"],
+    "models_to_feature": ["miarose", "sophia", "bella", ...],
+    "internal_link_target": 12
+  }
+
+Step 5: CONTENT GENERATION (Claude API — main call)
+  Write full article following the plan
+  Natural language, unique insights, not just a list
+
+Step 6: INTERNAL LINK INJECTION
+  Identify model mentions in text
+  Convert to links: <a href="/models/miarose">Watch MiaRose live</a>
+  Vary anchor text: model name, "see her room", "popular latina model", etc.
+  Cap: ~1 link per 100 words
+
+Step 7: VALIDATION
+  - 1,500+ words
+  - 10+ internal links to model pages
+  - Proper heading hierarchy (H1 → H2 → H3)
+  - Unique content (not rehash of existing posts)
+  - If fails: retry or flag for review
+
+Step 8: PUBLISH + UPDATE DB
+  POST /wp-json/wp/v2/posts with category and tag IDs
+  Log in wp_xcam_pipeline_runs
+```
+
+### WordPress Integration
+
+**Custom Post Type for Model Pages:**
+Register `model_page` post type in a WordPress plugin with:
+- Public, REST API enabled (`show_in_rest = true`)
+- Rewrite slug: `models` → URLs become `/models/miarose`
+- Supports: title, editor, custom-fields, thumbnail
+- Custom meta fields: `model_name`, `chaturbate_username`, `categories`, `related_models`
+
+**Authentication:**
+Content engine publishes via WP REST API using JWT authentication.
+- Install JWT Authentication plugin on WordPress
+- Create a service account for the content engine
+- Store token in `.env`: `WORDPRESS_JWT_TOKEN=...`
+- All publish requests include `Authorization: Bearer {token}`
+
+**Model Online Status:**
+Model pages check online status via the roulette's existing pool API:
+- `GET /wp-json/wr-pool/v1/list?pool=general` — search cached rooms by username
+- If found in cache → online, show live embed
+- If not found → offline, show "Watch Similar Models" CTA linking to roulette
+- No additional Chaturbate API calls needed
+
+**Daily Inactive Check (cron job):**
+- Query all wp_xcam_models WHERE status='active'
+- Cross-reference with pool data
+- If not seen online for 30+ days: mark status='inactive', set WP post to draft
+- Keep page URL reserved (may come back online)
+
+### Internal Linking System
+
+**Hybrid approach: static links in blog posts, dynamic links on model pages.**
+
+**Blog Posts (static):**
+- Links are baked into HTML at generation time
+- "Top 10 Latina Models" permanently links to those 10 model pages
+- Won't auto-update, but these are evergreen articles that get periodic refreshes
+
+**Model Pages (dynamic):**
+- "Similar Models" section queries DB on page load
+- PHP template queries wp_xcam_models for overlapping categories
+- As new models are added, existing pages automatically show them
+- Bidirectional: adding MiaRose → she appears on SophiaSmith's page and vice versa
+
+**Category Hub Pages** (auto-generated):
+- `/latina-cams`, `/asian-cams`, `/teen-cams`, etc.
+- Query: all active models with matching category, ordered by followers
+- Auto-update as models are added/removed
+
+**Link Density Rules:**
+- Blog posts: ~1 internal link per 100 words (2,000 word post ≈ 15-20 links)
+- Model pages: 5–8 related model links in sidebar/bottom section
+- Anchor text must vary (AI-generated, not repetitive "click here")
+- Never link to inactive/removed models
+
+### Content Quality Standards
+
+**Model Page Requirements:**
+- 300–600 words (sweet spot: 400–500)
+- Unique content: < 30% similarity to other model pages
+- Proper HTML: H1 (model name), at least 2 H2s, paragraphs
+- Model name appears 3–5 times naturally
+- Categories and tags mentioned in content
+- Meta description: 120–160 characters
+- No keyword stuffing, no spammy language
+
+**Blog Post Requirements:**
+- 1,500+ words (target: 2,000)
+- 10+ internal links to model pages
+- Proper heading hierarchy
+- Unique angle vs competing articles
+- Comparison tables where applicable
+- Natural keyword usage throughout
+
+**Auto-Reject + Retry:**
+If validation fails → regenerate with improved prompt (max 2 retries).
+If still fails → mark as 'failed' in pipeline_runs, flag for manual review.
+Track success rates per content type in pipeline_runs table.
+
+### SEO Risk Management
+
+**Thin Content Prevention:**
+- Minimum 300 words per model page (enforced by validator)
+- Each page has a unique angle, not just template fill-in
+- Vary writing style and structure across pages
+- Include unique sections per model: specialties, streaming style, viewer experience
+
+**Duplicate Content Prevention:**
+- Similarity check before publishing (compare against all existing pages)
+- Reject if > 30% match with any existing page
+- Use different sentence structures and vocabulary per category
+- Blog posts must have unique research/insights, not just rehashed lists
+
+**Over-Optimization Prevention:**
+- Model name max 5 times per 400 words
+- Internal links feel natural, contextual — not forced
+- Varied anchor text (AI generates options, not repeated phrases)
+- Link density cap enforced by validator
+
+**Gradual Indexing Strategy (critical):**
+Do NOT generate 1,000 pages and submit all at once.
+```
+Week 1:  Generate 20 model pages → submit to Search Console → monitor
+Week 2:  If no issues, generate 50 more
+Week 3:  Scale to 100 if indexing healthy
+Week 4:  Monitor for penalties, thin content warnings
+Month 2: Begin blog posts (10 initially)
+Month 3: Scale based on results — if ranking well, accelerate
+```
+Monitor Google Search Console weekly for: indexing errors, manual actions,
+coverage drops, thin content warnings.
+
+**Quality Signals to Maintain:**
+- Page load < 2 seconds (even with live embed)
+- Mobile-optimized (same responsive approach as roulette)
+- Valid HTML, proper schema markup
+- Real user engagement (time on page from live embeds)
+
+### Implementation Phases
+
+**Phase 1 — MVP: Validate the Concept (Week 1-2)**
+Goal: Prove model pages can get indexed and drive traffic.
+- [ ] Create MySQL tables
+- [ ] Build basic CLI: seed-keywords, generate (model_page only), list
+- [ ] Model page generator with Claude API
+- [ ] WordPress custom post type + publishing integration
+- [ ] Simple related models (manual list initially)
+- [ ] Import 50 model keywords, generate 20 pages, publish
+- [ ] Submit to Search Console
+- Success: 5+ pages indexed within 2 weeks, no penalties
+
+**Phase 2 — Scale Model Pages (Week 3-4)**
+Goal: Prove it scales without quality degradation.
+- [ ] Quality validation system (uniqueness check, word count, structure)
+- [ ] Dynamic related models query (auto-linking)
+- [ ] Online/offline status on model pages
+- [ ] Daily status check cron job
+- [ ] Generate 100 more model pages
+- Success: 50+ indexed, 10+ ranking top 50 for model names
+
+**Phase 3 — Blog Content (Month 2)**
+Goal: Capture general keywords with long-form content.
+- [ ] Web research layer (analyze competing articles)
+- [ ] Blog post generator with strategic planning step
+- [ ] Internal link injection system
+- [ ] Category hub pages
+- [ ] Generate 10 blog posts linking to 100+ model pages
+- Success: Blog posts indexed, organic traffic increases 20%+
+
+**Phase 4 — Optimize & Automate (Month 3+)**
+Goal: Reduce manual work, run on autopilot.
+- [ ] Auto-quality approval for high-scoring content
+- [ ] Automated keyword research (trending models, seasonal topics)
+- [ ] Link optimization agent (identify weak clusters, rebalance)
+- [ ] Scale to 500+ model pages, 50+ blog posts
+- [ ] Potential: fully agentic orchestrator that manages the pipeline autonomously
+
+### How the Content Engine Connects to the Roulette
+
 - **Shared pool data** — model pages use the same cached API data for online status
 - **Shared embed system** — same iframe embed code, same affiliate params
 - **Shared analytics** — same event tracking on model pages
-- **Roulette personalization feeds SEO priorities** — most-engaged tags = generate those model pages first
+- **Roulette feeds SEO priorities** — most-engaged tags from wp_wr_signals = generate those model pages first
 - **Model pages feed the roulette** — "model is offline → watch similar on roulette"
+- **Category hubs link to roulette** — "Can't decide? Try our random cam roulette"
 
 ### What the Roulette Build Must Account for Now
-1. Pool data accessible via clean API (not locked inside roulette JS)
-2. Embed URL construction is a shared utility (not hardcoded)
+1. Pool data accessible via clean REST API (not locked inside roulette JS)
+2. Embed URL construction is a shared utility function (not hardcoded)
 3. Analytics events are generic enough to work on any page type
 4. Dashboard has a "content engine" config section ready to expand
+5. WordPress has the custom post type plugin ready even before content engine ships
 
 ---
 

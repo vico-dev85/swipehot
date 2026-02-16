@@ -1,0 +1,5204 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Wetroulette — Live (CB Pool Matches)</title>
+
+<style>
+/* ===== Modals ===== */
+.signup-modal{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.8);
+  display:none;                     /* JS will flip to flex */
+  align-items:center;
+  justify-content:center;
+  z-index:2000;
+}
+.modal-content{
+  background:#fff;
+  padding:40px;
+  border-radius:15px;
+  text-align:center;
+  max-width:450px;
+  width:90%;
+  box-shadow:0 20px 60px rgba(0,0,0,.3);
+}
+.email-input{
+  width:100%;
+  padding:15px;
+  border:2px solid #ddd;
+  border-radius:8px;
+  font-size:16px;
+  margin-bottom:20px;
+  outline:none;
+}
+.signup-btn, .close-modal{
+  padding:15px 30px;
+  border:none;
+  border-radius:8px;
+  font-size:16px;
+  font-weight:500;
+  cursor:pointer;
+  margin:5px;
+  transition:all .3s ease;
+}
+.signup-btn{ background:#4a90e2; color:#fff; }
+.close-modal{ background:#ddd; color:#666; }
+.vip-checking {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    margin: 20px 0;
+  }
+  
+  .availability-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid rgba(255, 255, 255, 0.2);
+    border-top-color: #4299e1;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+  
+  .checking-text {
+    color: #cbd5e1;
+    font-size: 14px;
+    text-align: center;
+  }
+  
+  .claim-btn {
+    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+    color: white;
+    border: none;
+    padding: 14px 28px;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 12px;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.4s ease;
+  }
+  
+  .claim-btn.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  
+  .claim-btn:hover {
+    background: linear-gradient(135deg, #38a169 0%, #2f855a 100%);
+    transform: translateY(-1px);
+  }
+
+/* ===== Base Layout ===== */
+.video-chat-container * { margin:0; padding:0; box-sizing:border-box; }
+.video-chat-container {
+  position: relative; /* Add this if not already present */
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background:#2c2c2c;
+  height:100vh; max-width:100%; overflow:hidden; position:relative;
+  border-radius:14px; overflow:hidden;
+}
+.chat-container { display:flex; flex-direction:column; height:100vh; }
+
+/* ===== Header: Left (Match), Center (Online), Right (VIP) ===== */
+.header{
+  background:linear-gradient(135deg,#2d3748 0%,#1a202c 100%);
+  padding:12px 14px;
+  border-bottom:1px solid rgba(255,255,255,0.1);
+  min-height:64px;
+  display:grid; grid-template-columns: 1fr auto 1fr; align-items:center;
+  position:relative; z-index:200; column-gap:12px;
+}
+
+/* Left: Match */
+.filter-section{ display:flex; align-items:center; gap:8px; min-width:0; justify-self:start; }
+.filter-label{ color:#a0aec0; font-size:14px; font-weight:600; white-space:nowrap; }
+.gender-filter-container{ position:relative; display:inline-block; z-index:300; }
+.gender-filter{
+  background:linear-gradient(135deg,#4299e1 0%,#3182ce 100%); color:#fff; border:none;
+  padding:7px 10px; border-radius:14px; font-size:12px; font-weight:800; cursor:pointer;
+  min-width:92px; display:flex; align-items:center; justify-content:center;
+  box-shadow:0 4px 12px rgba(66,153,225,.2); transition:all .25s ease;
+}
+.gender-filter:hover{ background:linear-gradient(135deg,#3182ce 0%,#2c5282 100%); transform:translateY(-1px); }
+.filter-text{ display:flex; align-items:center; gap:6px; }
+.dropdown-arrow{ font-size:11px; opacity:.8; margin-left:6px; transition:transform .25s ease; }
+.gender-filter.open .dropdown-arrow{ transform:rotate(180deg); }
+
+.gender-dropdown{
+  position:absolute; top:calc(100% + 6px); left:0; width:100%; min-width:160px; background:#fff; border-radius:12px;
+  box-shadow:0 8px 25px rgba(0,0,0,.15); border:1px solid rgba(0,0,0,.08);
+  overflow:hidden; opacity:0; visibility:hidden; transform:translateY(-8px) scale(.95);
+  transition:all .25s cubic-bezier(.4,0,.2,1); z-index:3000;
+}
+.gender-dropdown.show{ opacity:1; visibility:visible; transform:translateY(0) scale(1); }
+.dropdown-item{
+  padding:12px 16px; display:flex; align-items:center; gap:10px; cursor:pointer; font-weight:600; font-size:13px;
+  background:linear-gradient(135deg,#fef5e7 0%,#fed7aa 100%); color:#9c4221; border-bottom:1px solid rgba(0,0,0,.04);
+}
+.dropdown-item:last-child{ border-bottom:none; }
+.dropdown-item:hover{ background:linear-gradient(135deg,#fed7aa 0%,#f6ad55 100%); }
+.dropdown-item .icon{ font-size:16px; width:18px; display:flex; align-items:center; justify-content:center; }
+.premium-badge-small{ background:#f6ad55; color:#1a202c; font-size:11px; padding:3px 7px; border-radius:10px; font-weight:800; margin-left:auto; letter-spacing:.5px; }
+
+/* Center: Online */
+.header-center{ justify-self:center; display:flex; align-items:center; justify-content:center; }
+.online-count{
+  background:rgba(72,187,120,.15);
+  color:#e6fffb; padding:6px 10px; border-radius:24px; font-size:12px; font-weight:800;
+  display:flex; align-items:center; gap:6px; white-space:nowrap; border:1px solid rgba(72,187,120,.2);
+}
+.online-dot{ width:8px; height:8px; background:#48bb78; border-radius:50%; animation:pulse-dot 2s infinite; }
+@keyframes pulse-dot { 0%,100%{opacity:1; transform:scale(1)} 50%{opacity:.7; transform:scale(1.12)} }
+
+/* Right: VIP */
+.header-right{ justify-self:end; display:flex; align-items:center; justify-content:flex-end; gap:8px; }
+
+/* ===== Main Area ===== */
+.main-content{ flex:1; display:flex; flex-direction:column; position:relative; }
+.video-area{ flex:1; background:#000; position:relative; display:flex; align-items:center; justify-content:center; z-index:1; }
+
+/* ======= LIVE center-crop (locked) with Dual Iframe System ======= */
+.live-wrap{ position:absolute; inset:0; overflow:hidden; background:#000; z-index:1; }
+.live-canvas{ position:absolute; top:0; left:0; height:100%; }
+
+/* Dual iframe system for seamless transitions */
+.partner-iframe{ 
+  width:100%; height:100%; border:0; display:block; 
+  position: absolute; top: 0; left: 0;
+  transition: opacity 0.6s ease;
+}
+.partner-iframe.blurred{ filter: blur(10px); }
+.partner-iframe.hidden{ opacity: 0; pointer-events: none; }
+.partner-iframe.visible{ opacity: 1; pointer-events: auto; }
+
+  .start-overlay{
+    position:absolute; inset:0; z-index:10;
+    display:flex; align-items:center; justify-content:center;
+    background:rgba(0,0,0,.75);
+    backdrop-filter:saturate(1.2) blur(2px);
+  }
+  .start-card{
+    background:#101418; color:#fff; padding:20px 24px;
+    border-radius:14px; box-shadow:0 14px 40px rgba(0,0,0,.35);
+    text-align:center; max-width:420px; width:90%;
+  }
+  .start-btn{
+    margin-top:12px; border:0; padding:12px 18px; border-radius:10px;
+    font-weight:600; cursor:pointer;
+  }
+
+<!-- Overlay sits on top of the stage -->
+<div id="startOverlay" class="start-overlay">
+  <div class="start-card">
+    <div style="font-size:18px; margin-bottom:8px;">Ready to start video chat?</div>
+    <button id="startBtn" class="start-btn">Start</button>
+  </div>
+</div>
+
+
+.connecting-message{
+  color:#fff; font-size:20px; font-weight:400; text-align:center; 
+  background:rgba(0,0,0,.85);
+  padding:24px 32px; border-radius:16px; position:absolute; z-index:10;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,.1);
+  display: flex; align-items: center; gap: 16px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .3s ease, visibility 0s linear .3s;
+}
+
+.connecting-message.show {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity .3s ease;
+}
+
+.loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid rgba(255,255,255,.2);
+  border-top-color: #4299e1;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* ===== TRANSITION OVERLAY - LOGO VERSION ===== */
+.transition-overlay {
+  position: absolute; /* Relative to parent container, not whole screen */
+  inset: 0;
+  background: linear-gradient(135deg, rgba(15,15,26,0.98) 0%, rgba(20,10,30,0.98) 50%, rgba(15,15,26,0.98) 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 35; /* Below local camera (z-index: 30) but above video stream */
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.4s ease, visibility 0s linear 0.4s;
+  backdrop-filter: blur(20px);
+}
+
+.transition-overlay.show {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.4s ease;
+}
+/* ===== END CHAT OVERLAY ===== */
+.end-chat-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(26, 26, 46, 0.95) 0%, rgba(22, 33, 62, 0.95) 40%, rgba(15, 52, 96, 0.95) 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 35;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.4s ease, visibility 0s linear 0.4s;
+  backdrop-filter: blur(8px) saturate(110%);
+}
+
+.end-chat-overlay.show {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.4s ease;
+}
+
+/* Hide local camera and peek button when end chat is shown */
+.end-chat-overlay.show ~ .local-cam,
+.end-chat-overlay.show ~ .peek-fab {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.end-chat-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 32px;
+  text-align: center;
+  padding: 40px 32px;
+  max-width: 480px;
+  width: 90%;
+}
+
+.end-chat-main-text {
+  color: #f8fafc;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  line-height: 1.2;
+}
+
+.end-chat-sub-text {
+  color: #cbd5e1;
+  font-size: 16px;
+  font-weight: 400;
+  opacity: 0.9;
+  margin-top: -8px;
+}
+
+.end-chat-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 320px;
+}
+
+.end-chat-btn {
+  padding: 16px 32px;
+  border: none;
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  letter-spacing: 0.3px;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.end-chat-btn.primary {
+  background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+  color: #ffffff;
+  box-shadow: 0 8px 25px rgba(66, 153, 225, 0.3);
+}
+
+.end-chat-btn.primary:hover {
+  background: linear-gradient(135deg, #3182ce 0%, #2c5282 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 35px rgba(66, 153, 225, 0.4);
+}
+
+.end-chat-btn.secondary {
+  background: rgba(255, 255, 255, 0.08);
+  color: #e5e7eb;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.end-chat-btn.secondary:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(-1px);
+}
+
+/* Mobile adjustments for end chat overlay */
+@media (max-width: 480px) {
+  .end-chat-content {
+    padding: 32px 24px;
+    gap: 24px;
+  }
+  
+  .end-chat-main-text {
+    font-size: 24px;
+  }
+  
+  .end-chat-sub-text {
+    font-size: 14px;
+  }
+  
+  .end-chat-btn {
+    font-size: 15px;
+    padding: 14px 24px;
+    min-height: 52px;
+  }
+}
+
+.transition-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 40px 20px;
+  animation: slideUp 0.4s ease-out;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== ANIMATED LOGO CENTER ===== */
+.transition-logo-animated {
+  position: relative;
+  width: 180px;
+  height: 180px;
+  margin: 0 auto 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Main logo with pulse */
+.logo-main {
+  width: 140px;
+  height: auto;
+  position: relative;
+  z-index: 3;
+  filter: drop-shadow(0 4px 20px rgba(110, 69, 226, 0.6));
+  animation: logoPulse 2s ease-in-out infinite;
+}
+
+@keyframes logoPulse {
+  0%, 100% {
+    transform: scale(1);
+    filter: drop-shadow(0 4px 20px rgba(110, 69, 226, 0.6));
+  }
+  50% {
+    transform: scale(1.05);
+    filter: drop-shadow(0 6px 30px rgba(110, 69, 226, 0.9));
+  }
+}
+
+/* Rotating gradient ring 1 */
+.logo-ring {
+  position: absolute;
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  background: linear-gradient(135deg, #6e45e2, #8b5cf6, #ff85a2, #6e45e2) border-box;
+  -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0.6;
+  animation: rotateRing 3s linear infinite;
+  z-index: 1;
+}
+
+/* Rotating gradient ring 2 (counter-clockwise) */
+.logo-ring-2 {
+  position: absolute;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  background: linear-gradient(225deg, #ff85a2, #8b5cf6, #6e45e2, #ff85a2) border-box;
+  -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0.4;
+  animation: rotateRingReverse 4s linear infinite;
+  z-index: 2;
+}
+
+@keyframes rotateRing {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes rotateRingReverse {
+  from { transform: rotate(360deg); }
+  to { transform: rotate(0deg); }
+}
+
+/* Orbiting dots around logo */
+.orbit-dot {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: linear-gradient(135deg, #6e45e2, #ff85a2);
+  border-radius: 50%;
+  box-shadow: 0 0 12px rgba(110, 69, 226, 0.8);
+  animation: orbit 3s linear infinite;
+}
+
+.orbit-dot.dot-1 {
+  animation-delay: 0s;
+  top: 10px;
+  left: 50%;
+  transform-origin: 50% 80px;
+}
+
+.orbit-dot.dot-2 {
+  animation-delay: 1s;
+  top: 10px;
+  left: 50%;
+  transform-origin: 50% 80px;
+}
+
+.orbit-dot.dot-3 {
+  animation-delay: 2s;
+  top: 10px;
+  left: 50%;
+  transform-origin: 50% 80px;
+}
+
+@keyframes orbit {
+  from { transform: rotate(0deg) translateY(0); }
+  to { transform: rotate(360deg) translateY(0); }
+}
+
+/* ===== TEXT STYLING ===== */
+.transition-text {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 12px;
+  background: linear-gradient(135deg, #ffffff, #e0d0ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: fadeIn 0.6s ease 0.2s both;
+}
+
+.transition-subtext {
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.65);
+  margin: 0 0 24px;
+  line-height: 1.5;
+  animation: fadeIn 0.6s ease 0.3s both;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ===== BOTTOM DOTS ===== */
+.transition-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  animation: fadeIn 0.6s ease 0.4s both;
+}
+
+.transition-dots .dot {
+  width: 8px;
+  height: 8px;
+  background: linear-gradient(135deg, #6e45e2, #8b5cf6);
+  border-radius: 50%;
+  animation: dotPulse 1.4s ease-in-out infinite;
+  box-shadow: 0 0 8px rgba(110, 69, 226, 0.5);
+}
+
+.transition-dots .dot:nth-child(1) { animation-delay: 0s; }
+.transition-dots .dot:nth-child(2) { animation-delay: 0.2s; }
+.transition-dots .dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes dotPulse {
+  0%, 100% { transform: scale(1); opacity: 0.5; }
+  50% { transform: scale(1.3); opacity: 1; }
+}
+
+/* ===== MOBILE RESPONSIVE ===== */
+@media (max-width: 640px) {
+  .transition-content {
+    padding: 30px 20px;
+  }
+  
+  .transition-logo-animated {
+    width: 150px;
+    height: 150px;
+    margin-bottom: 32px;
+  }
+  
+  .logo-main {
+    width: 110px;
+  }
+  
+  .logo-ring {
+    width: 130px;
+    height: 130px;
+  }
+  
+  .logo-ring-2 {
+    width: 115px;
+    height: 115px;
+  }
+  
+  .orbit-dot {
+    width: 8px;
+    height: 8px;
+  }
+  
+  .transition-text {
+    font-size: 1.25rem;
+  }
+  
+  .transition-subtext {
+    font-size: 0.88rem;
+  }
+}
+
+@media (max-width: 380px) {
+  .transition-logo-animated {
+    width: 130px;
+    height: 130px;
+  }
+  
+  .logo-main {
+    width: 90px;
+  }
+  
+  .logo-ring {
+    width: 110px;
+    height: 110px;
+  }
+  
+  .logo-ring-2 {
+    width: 100px;
+    height: 100px;
+  }
+  
+  .transition-text {
+    font-size: 1.1rem;
+  }
+  
+  .transition-subtext {
+    font-size: 0.82rem;
+  }
+}
+
+/* Landscape mode */
+@media (max-height: 600px) and (orientation: landscape) {
+  .transition-content {
+    padding: 20px;
+  }
+  
+  .transition-logo-animated {
+    width: 120px;
+    height: 120px;
+    margin-bottom: 24px;
+  }
+  
+  .logo-main {
+    width: 90px;
+  }
+  
+  .logo-ring {
+    width: 100px;
+    height: 100px;
+  }
+  
+  .logo-ring-2 {
+    width: 90px;
+    height: 90px;
+  }
+  
+  .transition-text {
+    font-size: 1rem;
+    margin-bottom: 8px;
+  }
+  
+  .transition-subtext {
+    font-size: 0.8rem;
+    margin-bottom: 16px;
+  }
+}
+
+/* ===== Local Camera ===== */
+.local-cam{
+  position:absolute; top:20px; right:20px; width:150px; height:150px; aspect-ratio:1/1;
+  background: linear-gradient(180deg,#0b1220,#0f172a);
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:12px; box-shadow: 0 10px 28px rgba(0,0,0,.35);
+  overflow:hidden; cursor:pointer; z-index:30; transform: translate(4px,-3px);
+  transition: box-shadow .25s ease, border-color .25s ease, transform .15s ease;
+  backdrop-filter: saturate(110%) blur(4px);
+}
+.local-cam:hover{ transform: translate(4px,-3px) scale(1.01); box-shadow:0 12px 34px rgba(0,0,0,.45); border-color:rgba(255,255,255,.18); }
+#localVideo{ width:100%; height:100%; object-fit:cover; display:none; transform:scaleX(-1); border-radius:10px; }
+.local-cam-overlay{
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  padding:12px; background: radial-gradient(120% 120% at 50% 15%, rgba(255,255,255,.06), rgba(0,0,0,.35));
+  color:#cbd5e1; transition: opacity .2s ease, visibility .2s ease;
+}
+.cam-ui{ display:flex; flex-direction:column; gap:8px; align-items:center; text-align:center; }
+.cam-icon{ width:32px; height:32px; color:#a3e3ff; filter: drop-shadow(0 2px 10px rgba(28,163,248,.25)); }
+.cam-title{ font-weight:800; color:#e5e7eb; font-size:14px; line-height:1.2; }
+.cam-sub{ font-size:12px; opacity:.8; }
+.cam-spinner{ width:22px; height:22px; border-radius:50%; border:2px solid rgba(255,255,255,.2); border-top-color:#1CA3F8; display:none; animation: spin 1s linear infinite; }
+@keyframes spin{ to{ transform:rotate(360deg); } }
+.cam-retry{ display:none; margin-top:2px; background:transparent; color:#e5e7eb; border:1px solid rgba(229,231,235,.35); padding:6px 10px; border-radius:8px; font-weight:600; font-size:12px; }
+.cam-close{
+  position:absolute; top:6px; right:6px; width:22px; height:22px; border-radius:50%;
+  display:none; align-items:center; justify-content:center;
+  background:rgba(15,23,42,.75); color:#e5e7eb; border:1px solid rgba(255,255,255,.2);
+  font-weight:800; font-size:14px; line-height:1; cursor:pointer; z-index:2;
+}
+.local-cam.is-active .cam-close, .local-cam.active .cam-close{ display:flex; }
+
+/* ===== Controls ===== */
+.controls{
+  position:absolute; bottom:30px; left:50%; transform:translateX(-50%);
+  display:flex; align-items:center; justify-content:center; gap:12px; z-index:20;
+}
+.control-btn{
+  background:#444; color:#fff; border:none; padding:10px 16px; border-radius:16px;
+  cursor:pointer; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.5px;
+  transition:all .3s ease; box-shadow:0 4px 12px rgba(0,0,0,.3);
+}
+.control-btn:hover{ background:#555; transform:translateY(-2px); box-shadow:0 6px 16px rgba(0,0,0,.4); }
+
+/* Chat input with send arrow */
+.chat-input-wrap{ position: relative; }
+.chat-input{
+  background: #1f2937; color:#e5e7eb; border-top: 1px solid rgba(255,255,255,.08);
+  border:none; padding:20px 25px; width:100%; font-size:16px; outline:none; font-weight:500;
+  padding-right: 56px;
+}
+.chat-input::placeholder{ color:#94a3b8; opacity:1; }
+.send-btn{
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+  width: 40px; height: 40px; border: 1px solid rgba(255,255,255,.12);
+  border-radius: 12px; background: linear-gradient(135deg,#334155,#1f2937);
+  color: #e5e7eb; display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer; box-shadow: 0 6px 16px rgba(0,0,0,.28);
+}
+
+/* ===== Peek FAB ===== */
+.peek-fab{
+  position:absolute; top:12px; left:12px; z-index:26;
+  background:#0ea5e9; color:#fff; border:0; border-radius:12px;
+  padding:8px 12px; font-weight:700; font-size:13px; box-shadow:0 6px 16px rgba(0,0,0,.28);
+}
+
+/* ===== Mobile tweaks ===== */
+@media (max-width: 768px){
+  .video-area{ flex:0 0 auto; width:100%; aspect-ratio:544/680; position:relative; }
+  .video-chat-container, .chat-container{ height:auto !important; min-height:0 !important; }
+  .main-content{ flex:0 0 auto !important; }
+}
+/* ✅ Corrected 480px block (replaces the buggy one) */
+@media (max-width:480px){
+  .local-cam{ width:120px; height:120px; top:16px; right:16px; }
+  .controls{ bottom:16px; }
+  .header{ padding:10px 12px; min-height:56px; }
+  .send-btn{ width:38px; height:38px; right:8px; border-radius:10px; }
+  .chat-input{ padding-right:52px; }
+
+  /* Mobile overlay adjustments */
+  .transition-content {
+    padding: 24px;
+    gap: 20px;
+    transform: translateY(40px);
+  }
+  .transition-icon {
+    width: 56px;
+    height: 56px;
+  }
+  .transition-icon svg { width:100%; height:100%; display:block; }
+  .transition-text { font-size: 18px; }
+}
+
+/* Online badge polish & a11y */
+#onlineCount span { opacity: 0; transition: opacity .18s ease; font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1, "lnum" 1; }
+#onlineCount[data-ready="1"] span { opacity: 1; }
+@media (prefers-reduced-motion: reduce){ .online-dot{ animation:none; } }
+@supports (padding: max(0px)){
+  @media (max-width:480px){
+    .header{ padding-left:max(12px, env(safe-area-inset-left)); padding-right:max(12px, env(safe-area-inset-right)); }
+  }
+}
+/* ===== Modal Glass Pack ===== */
+.signup-modal{
+  position: fixed;
+  inset: 0;
+  display: flex;                 /* keep layout ready */
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(10, 12, 16, .55);   /* dim layer */
+  -webkit-backdrop-filter: blur(8px) saturate(110%);
+  backdrop-filter: blur(8px) saturate(110%);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .28s ease, visibility 0s linear .28s;
+  z-index: 3000;
+}
+.signup-modal.show{
+  opacity: 1;
+  visibility: visible;
+  transition: opacity .28s ease;
+}
+
+/* Card */
+.signup-modal .modal-content{
+  width: min(520px, 92vw);
+  background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02));
+  border: 1px solid rgba(255,255,255,.18);
+  color: #e5e7eb;
+  border-radius: 18px;
+  padding: 28px 24px;
+  box-shadow:
+    0 22px 70px rgba(0,0,0,.35),
+    inset 0 1px 0 rgba(255,255,255,.06);
+  transform: scale(.97) translateY(6px);
+  transition: transform .28s cubic-bezier(.2,.8,.2,1), opacity .2s ease;
+}
+.signup-modal.show .modal-content{
+  transform: scale(1) translateY(0);
+}
+
+/* Title + subtitle */
+.signup-modal h2{
+  margin: 0 0 10px;
+  font-size: 24px;
+  line-height: 1.1;
+  font-weight: 900;
+  letter-spacing: .2px;
+  color: transparent;
+  background: linear-gradient(90deg,#fff,#f6ad55);
+  -webkit-background-clip: text; background-clip: text;
+  text-align: center;
+}
+.signup-modal p{
+  margin: 0 0 18px;
+  color: #cbd5e1;
+  text-align: center;
+}
+
+/* Input */
+.signup-modal .email-input{
+  width: 100%;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.18);
+  color: #f8fafc;
+  border-radius: 12px;
+  padding: 14px 14px;
+  font-size: 15px;
+  outline: none;
+  transition: border-color .2s ease, box-shadow .2s ease;
+  margin: 8px 0 14px;
+}
+.signup-modal .email-input::placeholder{ color:#94a3b8; }
+.signup-modal .email-input:focus{
+  border-color: rgba(99,102,241,.6);
+  box-shadow: 0 0 0 3px rgba(99,102,241,.25);
+}
+
+/* Buttons row */
+.signup-modal .signup-btn,
+.signup-modal .close-modal{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 18px;
+  border-radius: 12px;
+  font-weight: 700;
+  letter-spacing: .2px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: transform .12s ease, box-shadow .2s ease, opacity .2s ease, background .2s;
+}
+.modal-close-x {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: 8px;
+  background: rgba(0,0,0,.3);
+  color: #e5e7eb;
+  font-size: 18px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all .2s ease;
+  backdrop-filter: blur(4px);
+}
+
+.modal-close-x:hover {
+  background: rgba(0,0,0,.5);
+  border-color: rgba(255,255,255,.3);
+  transform: scale(1.05);
+}
+
+.signup-modal .modal-content {
+  position: relative; /* Ensure the X button positions correctly */
+}
+/* === Mobile tweaks === */
+@media (max-width:480px){
+
+  /* 1) Controls: nudge down ~5px */
+  .controls{ bottom:11px; } /* was 16px */
+
+  /* 2) Keep END CHAT on one line */
+  .control-btn{ white-space: nowrap; }
+  .control-btn.end-chat{ min-width: 96px; } /* ensures no wrap */
+
+  /* 3) Header layout: 3 columns on mobile: [Match] [Online] [VIP] */
+  .header{
+    grid-template-columns: 1fr auto auto;   /* was 1fr auto 1fr */
+    column-gap: 8px;
+  }
+  .header-center{ justify-self:end; }       /* online badge -> middle auto col */
+  .header-right{  justify-self:end; }       /* VIP -> rightmost col */
+
+  /* Optional: make the online badge a hair smaller for mobile */
+  .online-count{ font-size:11px; padding:5px 8px; }
+}
+/* Bigger, bolder Claim button that fills the slot */
+.claim-btn {
+  width: 100%;
+  min-height: 56px;
+  padding: 16px 22px;
+  border: none;
+  border-radius: 14px;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: .2px;
+  cursor: pointer;
+  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+  color: #fff;
+  box-shadow: 0 10px 28px rgba(56, 161, 105, .35);
+  transition: transform .15s ease, box-shadow .2s ease, opacity .3s ease, background .3s ease;
+  opacity: 0;
+  transform: translateY(6px);
+}
+.claim-btn.show { opacity: 1; transform: translateY(0); }
+.claim-btn:hover {
+  background: linear-gradient(135deg, #38a169 0%, #2f855a 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 12px 36px rgba(56, 161, 105, .45);
+}
+
+/* Quick questions flow */
+.vip-qs { display: grid; gap: 14px; }
+.vip-qs h3 { margin: 0 0 4px; font-size: 16px; color: #e5e7eb; }
+.vip-qs .qs-group { display: grid; gap: 8px; }
+.vip-qs label {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border-radius: 12px;
+  background: rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.16);
+  color: #dbeafe; cursor: pointer;
+}
+.vip-qs input[type="radio"] { accent-color: #38a169; }
+.vip-qs .qs-actions { display:flex; gap:10px; margin-top: 4px; }
+.vip-qs .btn {
+  flex: 1;
+  min-height: 44px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.16);
+  background: rgba(255,255,255,.06);
+  color: #e5e7eb; font-weight:700; cursor:pointer;
+}
+.vip-qs .btn.primary { background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%); border: none; color: #fff; }
+
+/* Email form when shown after Claim */
+.vip-email-form { display:grid; gap:12px; }
+.vip-email-form .email-input{
+  width:100%;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.18);
+  color: #f8fafc;
+  border-radius: 12px;
+  padding: 14px;
+  font-size: 15px;
+  outline: none;
+}
+.vip-email-form .email-input::placeholder{ color:#94a3b8; }
+.vip-email-form .signup-btn{
+  width:100%;
+  min-height:48px;
+  border-radius:12px;
+  font-weight:800;
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  color:#fff;
+  border:none;
+  cursor:pointer;
+}
+/* Start Screen */
+/* Start Screen - Enhanced Design */
+
+/* ===== XCAM.VIP - SAFE COLOR OVERLAY (Add to existing CSS) ===== */
+
+/* Only override colors, gradients, and text content - no layout changes */
+
+/* Header purple theme */
+.header {
+  background: linear-gradient(135deg, #1a0d2e 0%, #16213e 50%, #0f1419 100%) !important;
+  box-shadow: 0 4px 15px rgba(139, 69, 255, 0.3) !important;
+  border-bottom: 1px solid rgba(139, 69, 255, 0.2) !important;
+}
+
+/* Gender filter purple styling */
+.gender-filter {
+  background: rgba(139, 69, 255, 0.2) !important;
+  border: 1px solid rgba(139, 69, 255, 0.4) !important;
+}
+
+.gender-filter:hover {
+  background: rgba(139, 69, 255, 0.3) !important;
+  border-color: rgba(139, 69, 255, 0.6) !important;
+  box-shadow: 0 0 15px rgba(139, 69, 255, 0.4) !important;
+}
+
+.gender-dropdown {
+  background: #1a1a2e !important;
+  border: 1px solid rgba(139, 69, 255, 0.3) !important;
+}
+
+.dropdown-item {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%) !important;
+  border-bottom: 1px solid rgba(139, 69, 255, 0.1) !important;
+}
+
+.dropdown-item:hover {
+  background: linear-gradient(135deg, #8b45ff 0%, #6d28d9 100%) !important;
+}
+
+.premium-badge-small {
+  background: linear-gradient(135deg, #8b45ff 0%, #6d28d9 100%) !important;
+  box-shadow: 0 0 10px rgba(139, 69, 255, 0.5) !important;
+}
+
+/* Online count purple styling */
+.online-count {
+  background: rgba(139, 69, 255, 0.15) !important;
+  border: 1px solid rgba(139, 69, 255, 0.3) !important;
+}
+
+.online-dot {
+  background: #8b45ff !important;
+  box-shadow: 0 0 10px rgba(139, 69, 255, 0.8) !important;
+  animation: pulse-neon 2s infinite !important;
+}
+
+@keyframes pulse-neon {
+  0%, 100% { 
+    opacity: 1; 
+    transform: scale(1); 
+    box-shadow: 0 0 10px rgba(139, 69, 255, 0.8); 
+  }
+  50% { 
+    opacity: 0.7; 
+    transform: scale(1.2); 
+    box-shadow: 0 0 20px rgba(139, 69, 255, 1); 
+  }
+}
+
+.audio-toggle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  background: linear-gradient(135deg, #8b45ff 0%, #6d28d9 100%);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #ffffff;
+  padding: 5px 8px;
+  text-shadow: 0 1px 6px rgba(0,0,0,.25);
+  box-shadow: 0 2px 8px rgba(139, 69, 255, 0.4);
+  transition: all 0.2s ease;
+  min-width: 32px;
+}
+
+.audio-toggle:hover {
+  background: linear-gradient(135deg, #9d5bff 0%, #7c3aed 100%);
+  box-shadow: 0 3px 10px rgba(139, 69, 255, 0.6);
+  transform: translateY(-1px);
+}
+
+.audio-toggle .mic-icon {
+  width: 12px;
+  height: 12px;
+  filter: drop-shadow(0 1px 4px rgba(255,255,255,.2));
+}
+
+.audio-toggle .audio-text {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  margin-top: 1px;
+}
+/* Transition overlay purple */
+.transition-overlay {
+  background: linear-gradient(135deg, #0a0a0f 0%, #1a0d2e 40%, #16213e 100%) !important;
+}
+
+.transition-icon::before {
+  background:
+    radial-gradient(95% 95% at 30% 25%, #1a0d2e 0%, #0a0a0f 55%, #16213e 100%),
+    linear-gradient(140deg, rgba(139,69,255,.12), rgba(109,40,217,.08)) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(139,69,255,.3),
+    0 10px 28px rgba(0,0,0,.45),
+    0 0 30px rgba(139,69,255,.2) !important;
+}
+
+/* End chat overlay purple */
+.end-chat-overlay {
+  background: linear-gradient(135deg, rgba(10, 10, 15, 0.95) 0%, rgba(26, 13, 46, 0.95) 40%, rgba(22, 33, 62, 0.95) 100%) !important;
+}
+
+.end-chat-btn.primary {
+  background: linear-gradient(135deg, #8b45ff 0%, #6d28d9 100%) !important;
+  box-shadow: 0 8px 25px rgba(139, 69, 255, 0.3) !important;
+}
+
+.end-chat-btn.primary:hover {
+  background: linear-gradient(135deg, #9d5bff 0%, #7c3aed 100%) !important;
+  box-shadow: 0 12px 35px rgba(139, 69, 255, 0.4) !important;
+}
+
+/* Local camera purple */
+.local-cam {
+  background: linear-gradient(180deg, #1a0d2e, #0a0a0f) !important;
+  border: 3px solid rgba(139, 69, 255, 0.5) !important;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3), 0 0 20px rgba(139, 69, 255, 0.3) !important;
+}
+
+.local-cam:hover {
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.45), 0 0 30px rgba(139, 69, 255, 0.5) !important;
+  border-color: rgba(139, 69, 255, 0.7) !important;
+}
+
+.local-cam-overlay {
+  background: radial-gradient(120% 120% at 50% 15%, rgba(139,69,255,.06), rgba(0,0,0,.35)) !important;
+}
+
+.cam-spinner {
+  border-top-color: #8b45ff !important;
+}
+
+.cam-close {
+  border: 1px solid rgba(139, 69, 255, 0.3) !important;
+}
+
+/* Controls purple hover */
+.control-btn:hover {
+  background: rgba(139, 69, 255, 0.8) !important;
+  box-shadow: 0 6px 16px rgba(139, 69, 255, 0.4) !important;
+}
+
+/* Chat input purple */
+.chat-input-wrap {
+  background: #1a0d2e !important;
+  border-top: 1px solid rgba(139, 69, 255, 0.2) !important;
+}
+
+.chat-input {
+  background: #16213e !important;
+  border: 1px solid rgba(139, 69, 255, 0.3) !important;
+}
+
+.chat-input:focus {
+  border-color: #8b45ff !important;
+  background: #1a1a2e !important;
+  box-shadow: 0 0 15px rgba(139, 69, 255, 0.3) !important;
+}
+
+.send-btn {
+  background: linear-gradient(135deg, #8b45ff 0%, #6d28d9 100%) !important;
+  box-shadow: 0 4px 15px rgba(139, 69, 255, 0.4) !important;
+}
+
+.send-btn:hover {
+  background: linear-gradient(135deg, #9d5bff 0%, #7c3aed 100%) !important;
+  box-shadow: 0 6px 20px rgba(139, 69, 255, 0.6) !important;
+}
+
+/* Peek button purple */
+.peek-fab {
+  border: 1px solid rgba(139, 69, 255, 0.4) !important;
+}
+
+.peek-fab:hover {
+  background: rgba(139, 69, 255, 0.8) !important;
+  border-color: rgba(139, 69, 255, 0.6) !important;
+  box-shadow: 0 0 15px rgba(139, 69, 255, 0.4) !important;
+}
+
+/* Loading spinner purple */
+.loading-spinner {
+  border-top-color: #8b45ff !important;
+}
+
+.connecting-message {
+  border: 1px solid rgba(139, 69, 255, 0.3) !important;
+}
+
+/* Modal purple styling */
+.signup-modal {
+  background: rgba(10, 10, 15, 0.85) !important;
+}
+
+.modal-content {
+  background: linear-gradient(180deg, rgba(26,13,46,.95), rgba(16,33,62,.95)) !important;
+  border: 1px solid rgba(139,69,255,.3) !important;
+  box-shadow:
+    0 22px 70px rgba(0,0,0,.5),
+    0 0 50px rgba(139,69,255,.2),
+    inset 0 1px 0 rgba(255,255,255,.06) !important;
+}
+
+.modal-close-x {
+  border: 1px solid rgba(139,69,255,.3) !important;
+}
+
+.modal-close-x:hover {
+  background: rgba(139,69,255,.3) !important;
+  border-color: rgba(139,69,255,.5) !important;
+}
+
+.email-input {
+  background: rgba(139,69,255,.06) !important;
+  border: 1px solid rgba(139,69,255,.3) !important;
+}
+
+.email-input:focus {
+  border-color: rgba(139, 69, 255, 0.6) !important;
+  box-shadow: 0 0 0 3px rgba(139, 69, 255, 0.25) !important;
+}
+
+.signup-btn {
+  background: linear-gradient(135deg, #8b45ff 0%, #6d28d9 100%) !important;
+}
+
+.signup-btn:hover {
+  background: linear-gradient(135deg, #9d5bff 0%, #7c3aed 100%) !important;
+  box-shadow: 0 6px 20px rgba(139, 69, 255, 0.4) !important;
+}
+
+/* ========================================
+   START SCREEN - XCAM.VIP REDESIGN
+   ======================================== */
+
+   .start-screen {
+    position: absolute;
+    inset: 0;
+    background: 
+      radial-gradient(ellipse at 20% 80%, rgba(139, 69, 255, 0.3) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 20%, rgba(109, 40, 217, 0.15) 0%, transparent 50%),
+      radial-gradient(ellipse at 40% 40%, rgba(26, 13, 46, 0.4) 0%, transparent 50%),
+      linear-gradient(135deg, #0a0a0f 0%, #1a0d2e 30%, #16213e 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 5000;
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.6s ease, visibility 0s linear 0s;
+    overflow: hidden;
+  }
+  
+  .start-screen::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: 
+      radial-gradient(circle at 25% 25%, rgba(139, 69, 255, 0.08) 0%, transparent 50%),
+      radial-gradient(circle at 75% 75%, rgba(109, 40, 217, 0.08) 0%, transparent 50%);
+    animation: float 20s ease-in-out infinite;
+    pointer-events: none;
+  }
+  
+  @keyframes float {
+    0%, 100% { transform: rotate(0deg) scale(1); }
+    33% { transform: rotate(120deg) scale(1.1); }
+    66% { transform: rotate(240deg) scale(0.9); }
+  }
+  
+  .start-screen.hidden {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.6s ease, visibility 0s linear 0.6s;
+    pointer-events: none;
+  }
+  
+  /* Content Container */
+  .start-content {
+    text-align: center;
+    color: #fff;
+    max-width: 520px;
+    padding: 48px 40px;
+    position: relative;
+    z-index: 2;
+  }
+  
+  .start-content::before {
+    content: '';
+    position: absolute;
+    inset: -20px;
+    background: rgba(139, 69, 255, 0.05);
+    border: 1px solid rgba(139, 69, 255, 0.2);
+    border-radius: 24px;
+    backdrop-filter: blur(20px) saturate(120%);
+    box-shadow: 0 0 50px rgba(139, 69, 255, 0.3);
+    z-index: -1;
+  }
+  
+  /* Tagline */
+  .tagline {
+    font-size: 13px;
+    color: #8b45ff;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    margin: 0 0 20px;
+    opacity: 0.9;
+  }
+  
+  /* Logo Wrapper */
+  .logo-wrapper {
+    background-color: rgba(25, 9, 36, 0.6);
+    padding: 20px;
+    border-radius: 16px;
+    display: inline-block;
+    margin: 0 auto 24px;
+    border: 1px solid rgba(139, 69, 255, 0.2);
+    box-shadow: 0 4px 20px rgba(139, 69, 255, 0.2);
+  }
+  
+  .start-logo {
+    max-width: 190px;
+    height: auto;
+    display: block;
+  }
+  
+  /* Main Headline */
+  .start-headline {
+    font-size: clamp(28px, 6vw, 42px);
+    font-weight: 800;
+    margin: 0 0 16px;
+    background: linear-gradient(135deg, #ffffff 0%, #8b45ff 50%, #d946ef 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+    filter: drop-shadow(0 2px 8px rgba(139, 69, 255, 0.3));
+  }
+  
+  /* Subtext */
+  .start-subtext {
+    font-size: 16px;
+    color: #e2e8f0;
+    margin: 0 0 32px;
+    line-height: 1.6;
+    font-weight: 400;
+    opacity: 0.9;
+    max-width: 440px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  
+  /* CTA Button */
+  .start-button {
+    background: linear-gradient(135deg, #8b45ff 0%, #6d28d9 50%, #5b21b6 100%);
+    color: #ffffff;
+    border: none;
+    padding: 18px 48px;
+    border-radius: 16px;
+    font-size: 17px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 
+      0 10px 25px rgba(139, 69, 255, 0.4),
+      0 4px 12px rgba(0, 0, 0, 0.15),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    position: relative;
+    overflow: hidden;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    min-width: 240px;
+  }
+  
+  .start-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.6s;
+  }
+  
+  .start-button:hover::before {
+    left: 100%;
+  }
+  
+  .start-button:hover {
+    background: linear-gradient(135deg, #9d5bff 0%, #7c3aed 50%, #6d28d9 100%);
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 
+      0 16px 40px rgba(139, 69, 255, 0.5),
+      0 8px 20px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  }
+  
+  .start-button:active {
+    transform: translateY(-1px) scale(1.01);
+    transition: all 0.1s ease;
+  }
+  
+  /* Features (3 Icons) */
+  .start-features {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    margin-top: 32px;
+    opacity: 0.85;
+  }
+  
+  .start-feature {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #cbd5e1;
+    font-weight: 500;
+  }
+  
+  .start-feature-icon {
+    width: 44px;
+    height: 44px;
+    background: rgba(139, 69, 255, 0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #8b45ff;
+    font-size: 20px;
+    box-shadow: 0 0 15px rgba(139, 69, 255, 0.3);
+    border: 1px solid rgba(139, 69, 255, 0.3);
+  }
+  
+  /* Mobile Responsive */
+  @media (max-width: 640px) {
+    .start-content {
+      padding: 36px 28px;
+      max-width: 380px;
+    }
+    
+    .logo-wrapper {
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+    
+    .start-logo {
+      max-width: 135px;
+    }
+    
+    .start-headline {
+      font-size: 26px;
+      margin-bottom: 12px;
+    }
+    
+    .start-subtext {
+      font-size: 15px;
+      margin-bottom: 28px;
+    }
+    
+    .start-button {
+      padding: 16px 36px;
+      font-size: 15px;
+      min-width: 200px;
+    }
+    
+    .start-features {
+      gap: 28px;
+      margin-top: 28px;
+    }
+    
+    .start-feature {
+      font-size: 12px;
+    }
+    
+    .start-feature-icon {
+      width: 38px;
+      height: 38px;
+      font-size: 18px;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .start-content {
+      padding: 28px 20px;
+    }
+    
+    .start-features {
+      gap: 20px;
+    }
+    
+    .start-feature {
+      font-size: 11px;
+    }
+  }
+
+/* Gradient updates for SVGs */
+#dropGrad stop:nth-child(1) { stop-color: #8b45ff !important; }
+#dropGrad stop:nth-child(2) { stop-color: #6d28d9 !important; }
+#dropGrad stop:nth-child(3) { stop-color: #5b21b6 !important; }
+
+#miniDrop stop:nth-child(1) { stop-color: #8b45ff !important; }
+#miniDrop stop:nth-child(2) { stop-color: #6d28d9 !important; }
+#miniDrop stop:nth-child(3) { stop-color: #5b21b6 !important; }
+
+#miniDrop2 stop:nth-child(1) { stop-color: #8b45ff !important; }
+#miniDrop2 stop:nth-child(2) { stop-color: #6d28d9 !important; }
+#miniDrop2 stop:nth-child(3) { stop-color: #5b21b6 !important; }
+
+#miniDrop3 stop:nth-child(1) { stop-color: #8b45ff !important; }
+#miniDrop3 stop:nth-child(2) { stop-color: #6d28d9 !important; }
+#miniDrop3 stop:nth-child(3) { stop-color: #5b21b6 !important; }
+
+#camGrad stop:nth-child(1) { stop-color: #8b45ff !important; }
+#camGrad stop:nth-child(2) { stop-color: #6d28d9 !important; }
+
+#tickGlow stop:nth-child(1) { stop-color: #8b45ff !important; }
+#tickGlow stop:nth-child(2) { stop-color: #8b45ff !important; }
+#tickGlow stop:nth-child(3) { stop-color: #8b45ff !important; }
+
+/* Add once to your stylesheet */
+#genderFilterBtn .filter-text span::before { margin-right: .4em; }
+
+/* Icons tied to the current pool—no DOM changes needed */
+#genderFilterBtn[data-pool="general"] .filter-text span::before { content: "★"; }
+#genderFilterBtn[data-pool="female"]  .filter-text span::before { content: "♀"; }
+#genderFilterBtn[data-pool="male"]    .filter-text span::before { content: "♂"; }
+#genderFilterBtn[data-pool="trans"]   .filter-text span::before { content: "⚧"; }
+#genderFilterBtn[data-pool="couple"]  .filter-text span::before { content: "❤"; }
+/* Make the icon sit nicely before the label text */
+#genderFilterBtn .filter-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;              /* space between icon and text */
+}
+#genderFilterBtn .filter-text .current-icon {
+  display: inline-block;
+  line-height: 1;
+  /* optional tiny tweaks: */
+  /* font-size: 1em; */
+  /* transform: translateY(-0.5px); */
+}
+/* ensure color emoji fonts are used */
+#genderFilterBtn .filter-text span {
+    font-family: system-ui, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+  }
+/* XCam.VIP Muted Sound Icon - Nightclub Style */
+#mutedSoundIcon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(139, 69, 255, 0.15), rgba(109, 40, 217, 0.15));
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1.5px solid rgba(139, 69, 255, 0.4);
+  color: #8b45ff;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 
+    0 4px 15px rgba(139, 69, 255, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+#mutedSoundIcon::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #8b45ff, #6d28d9);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: -1;
+  filter: blur(8px);
+}
+
+#mutedSoundIcon:hover {
+  background: linear-gradient(135deg, rgba(139, 69, 255, 0.25), rgba(109, 40, 217, 0.25));
+  border-color: rgba(139, 69, 255, 0.7);
+  transform: translateY(-2px);
+  box-shadow: 
+    0 6px 20px rgba(139, 69, 255, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+#mutedSoundIcon:hover::before {
+  opacity: 0.6;
+}
+
+#mutedSoundIcon .mic-icon {
+  width: 22px;
+  height: 22px;
+  filter: drop-shadow(0 0 6px rgba(139, 69, 255, 0.6));
+}
+/* Premium XCam.VIP Controls */
+.controls {
+  position: absolute;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  z-index: 20;
+}
+
+.control-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 28px;
+  background: linear-gradient(135deg, rgba(20, 20, 30, 0.95), rgba(30, 30, 45, 0.95));
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1.5px solid rgba(139, 69, 255, 0.3);
+  border-radius: 50px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 
+    0 8px 24px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 0 20px rgba(139, 69, 255, 0.15);
+  overflow: hidden;
+}
+
+/* Glowing gradient overlay */
+.control-btn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(139, 69, 255, 0.1), rgba(109, 40, 217, 0.1));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+/* Icons inside buttons */
+.control-btn .btn-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  transition: transform 0.3s ease;
+}
+
+/* END SHOW - Red danger accent */
+.control-btn.end-chat {
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.control-btn.end-chat::before {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(220, 38, 38, 0.15));
+}
+
+.control-btn.end-chat:hover {
+  border-color: rgba(239, 68, 68, 0.7);
+  box-shadow: 
+    0 12px 32px rgba(239, 68, 68, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    0 0 30px rgba(239, 68, 68, 0.4);
+  transform: translateY(-3px);
+}
+
+.control-btn.end-chat:hover .btn-icon {
+  transform: rotate(90deg);
+}
+
+/* NEXT - Purple premium accent */
+.control-btn.next {
+  background: linear-gradient(135deg, rgba(139, 69, 255, 0.25), rgba(109, 40, 217, 0.25));
+  border-color: rgba(139, 69, 255, 0.5);
+}
+
+.control-btn.next::before {
+  background: linear-gradient(135deg, rgba(139, 69, 255, 0.2), rgba(109, 40, 217, 0.2));
+}
+
+.control-btn.next:hover {
+  background: linear-gradient(135deg, rgba(139, 69, 255, 0.35), rgba(109, 40, 217, 0.35));
+  border-color: rgba(139, 69, 255, 0.8);
+  box-shadow: 
+    0 12px 32px rgba(139, 69, 255, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    0 0 30px rgba(139, 69, 255, 0.5);
+  transform: translateY(-3px);
+}
+
+.control-btn.next:hover .btn-icon {
+  transform: translateX(4px);
+}
+
+/* Hover state for all buttons */
+.control-btn:hover::before {
+  opacity: 1;
+}
+
+/* Active press state */
+.control-btn:active {
+  transform: translateY(-1px);
+  box-shadow: 
+    0 4px 16px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+/* Premium XCam.VIP Peek Button - Maintains Original Position */
+.peek-fab {
+  /* ORIGINAL POSITIONING - DO NOT CHANGE */
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 26;
+  
+  /* PREMIUM STYLING */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: linear-gradient(135deg, rgba(139, 69, 255, 0.25), rgba(109, 40, 217, 0.35));
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 2px solid rgba(139, 69, 255, 0.5);
+  border-radius: 50px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 
+    0 6px 20px rgba(139, 69, 255, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    0 0 25px rgba(139, 69, 255, 0.25);
+  overflow: hidden;
+}
+
+/* Pulsing glow effect */
+.peek-fab::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  background: radial-gradient(circle, rgba(139, 69, 255, 0.6), transparent 70%);
+  border-radius: 50px;
+  opacity: 0;
+  animation: peek-pulse 2.5s ease-in-out infinite;
+  z-index: -1;
+  filter: blur(10px);
+}
+
+@keyframes peek-pulse {
+  0%, 100% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.05);
+  }
+}
+
+/* Eye icon */
+.peek-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 6px rgba(139, 69, 255, 0.8));
+  transition: transform 0.3s ease;
+}
+
+/* Peek text */
+.peek-text {
+  position: relative;
+  z-index: 1;
+}
+
+/* Timer badge */
+.peek-timer {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 7px;
+  background: rgba(139, 69, 255, 0.35);
+  border: 1px solid rgba(139, 69, 255, 0.6);
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  box-shadow: inset 0 0 8px rgba(139, 69, 255, 0.4);
+}
+
+/* Hover state */
+.peek-fab:hover {
+  background: linear-gradient(135deg, rgba(139, 69, 255, 0.4), rgba(109, 40, 217, 0.5)) !important;
+  border-color: rgba(139, 69, 255, 0.8) !important;
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 
+    0 8px 28px rgba(139, 69, 255, 0.5) !important,
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 0 35px rgba(139, 69, 255, 0.6) !important;
+}
+
+.peek-fab:hover .peek-icon {
+  transform: scale(1.15);
+  animation: peek-blink 1.5s ease-in-out infinite;
+}
+
+@keyframes peek-blink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+/* Active press state */
+.peek-fab:active {
+  transform: translateY(0) scale(0.98);
+  box-shadow: 
+    0 4px 16px rgba(139, 69, 255, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+/* Disabled state */
+.peek-fab:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Hide when end chat overlay is shown */
+.end-chat-overlay.show ~ .local-cam,
+.end-chat-overlay.show ~ .peek-fab {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+/* XCam.VIP Branded CTA Button */
+.claim-btn, .signup-btn {
+    background: linear-gradient(135deg, #8b45ff 0%, #6d28d9 100%) !important;
+    border: none !important;
+    color: #fff !important;
+    padding: 16px 32px !important;
+    border-radius: 12px !important;
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1px !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 
+      0 8px 24px rgba(139, 69, 255, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+  }
+  
+  .claim-btn:hover, .signup-btn:hover {
+    background: linear-gradient(135deg, #9d5bff 0%, #7c3aed 100%) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 
+      0 12px 32px rgba(139, 69, 255, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+  }
+  /* ====================================
+   ENHANCED FEATURE ICONS 
+   - Glass Morphism Style
+   - Hover Effects with Glow
+   - Floating Animation
+   ==================================== */
+
+/* Feature Icons Container */
+.start-features {
+  display: flex;
+  gap: 3rem;
+  margin-top: 3rem;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+/* Individual Feature Item */
+.start-feature {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  text-align: center;
+  max-width: 140px;
+  transition: transform 0.3s ease;
+}
+
+/* Floating Animation - Staggered timing */
+.start-feature:nth-child(1) {
+  animation: floatIcon 3s ease-in-out infinite;
+  animation-delay: 0s;
+}
+
+.start-feature:nth-child(2) {
+  animation: floatIcon 3s ease-in-out infinite;
+  animation-delay: 0.5s;
+}
+
+.start-feature:nth-child(3) {
+  animation: floatIcon 3s ease-in-out infinite;
+  animation-delay: 1s;
+}
+
+/* Floating Keyframes */
+@keyframes floatIcon {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* Icon Container - Glass Morphism Effect */
+.start-feature-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  position: relative;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  /* Glass morphism background */
+  background: rgba(139, 92, 246, 0.15);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  
+  /* Gradient border */
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  
+  /* Shadow for depth */
+  box-shadow: 
+    0 4px 15px rgba(139, 92, 246, 0.2),
+    inset 0 1px 1px rgba(255, 255, 255, 0.1);
+}
+
+/* Gradient Border Effect */
+.start-feature-icon::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  padding: 2px;
+  background: linear-gradient(135deg, #a78bfa, #ec4899, #8b5cf6);
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0.6;
+  transition: opacity 0.4s ease;
+}
+
+/* Glow ring on hover */
+.start-feature-icon::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(139, 92, 246, 0.4) 0%,
+    transparent 70%
+  );
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  z-index: -1;
+}
+
+/* Hover Effects */
+.start-feature:hover .start-feature-icon {
+  transform: scale(1.1);
+  background: rgba(139, 92, 246, 0.25);
+  box-shadow: 
+    0 8px 25px rgba(139, 92, 246, 0.4),
+    0 0 20px rgba(167, 139, 250, 0.3),
+    inset 0 1px 1px rgba(255, 255, 255, 0.2);
+}
+
+.start-feature:hover .start-feature-icon::before {
+  opacity: 1;
+}
+
+.start-feature:hover .start-feature-icon::after {
+  opacity: 1;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* Pulse animation for glow */
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.7;
+  }
+}
+
+/* Icon SVG/Text styling */
+.start-feature-icon svg,
+.start-feature-icon i {
+  width: 28px;
+  height: 28px;
+  color: #a78bfa;
+  transition: all 0.3s ease;
+  position: relative;
+  z-index: 1;
+  filter: drop-shadow(0 2px 4px rgba(139, 92, 246, 0.3));
+}
+
+.start-feature:hover .start-feature-icon svg,
+.start-feature:hover .start-feature-icon i {
+  color: #ffffff;
+  filter: drop-shadow(0 4px 8px rgba(167, 139, 250, 0.5));
+  transform: scale(1.05);
+}
+
+/* Feature Text */
+.start-feature span {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 500;
+  transition: all 0.3s ease;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.start-feature:hover span {
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow: 0 2px 8px rgba(167, 139, 250, 0.4);
+  transform: translateY(-2px);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .start-features {
+    gap: 2rem;
+    margin-top: 2rem;
+  }
+  
+  .start-feature {
+    max-width: 100px;
+  }
+  
+  .start-feature-icon {
+    width: 50px;
+    height: 50px;
+    font-size: 1.25rem;
+  }
+  
+  .start-feature-icon svg,
+  .start-feature-icon i {
+    width: 24px;
+    height: 24px;
+  }
+  
+  .start-feature span {
+    font-size: 0.8rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .start-features {
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+  
+  .start-feature {
+    max-width: 90px;
+  }
+  
+  .start-feature-icon {
+    width: 45px;
+    height: 45px;
+  }
+  
+  /* Reduce floating effect on mobile */
+  @keyframes floatIcon {
+    0%, 100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-5px);
+    }
+  }
+}
+
+/* Optional: Disable animations for users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .start-feature,
+  .start-feature-icon,
+  .start-feature-icon::after {
+    animation: none !important;
+  }
+  
+  .start-feature:hover .start-feature-icon::after {
+    animation: none !important;
+  }
+}
+/* ====================================
+   ENHANCED START SCREEN LAYOUT
+   - Bigger Logo
+   - Enhanced Tagline
+   - Larger CTA Button
+   ==================================== */
+
+/* Remove/Hide the "Step Into the VIP Lounge" headline */
+.start-content h1 {
+  display: none;
+}
+
+/* Logo Container - Much Bigger */
+.logo-wrapper {
+  margin-bottom: 2rem;
+  transform: scale(1.5); /* 50% bigger */
+  transform-origin: center;
+  transition: transform 0.3s ease;
+}
+
+/* Alternative: Direct logo sizing if the above doesn't work well */
+.start-logo {
+  max-width: 300px; /* Increased from ~300px */
+  width: 90%;
+  height: auto;
+  filter: drop-shadow(0 8px 25px rgba(139, 92, 246, 0.4));
+  transition: all 0.3s ease;
+}
+
+/* Logo hover effect - subtle glow */
+.logo-wrapper:hover .start-logo {
+  filter: drop-shadow(0 10px 35px rgba(167, 139, 250, 0.6));
+  transform: scale(1.02);
+}
+
+/* Tagline - Enhanced Styling */
+.start-content .tagline,
+.start-content p {
+  font-size: 1.25rem; /* Increased from 1.1rem */
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.9);
+  margin: 2rem auto;
+  max-width: 600px;
+  font-weight: 400;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  letter-spacing: 0.3px;
+}
+
+/* Make specific parts bold if needed */
+.start-content .tagline strong,
+.start-content p strong {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+/* CTA Button - Much Bigger and More Prominent */
+.start-button {
+  padding: 1.25rem 3.5rem; /* Increased from 1rem 2.5rem */
+  font-size: 1.25rem; /* Increased from 1.1rem */
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  background: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 50%, #ec4899 100%);
+  color: white;
+  border: none;
+  border-radius: 50px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 
+    0 8px 30px rgba(139, 92, 246, 0.4),
+    0 4px 15px rgba(236, 72, 153, 0.3);
+  margin-top: 2rem;
+}
+
+/* Button glow effect */
+.start-button::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50px;
+  background: linear-gradient(135deg, #a78bfa, #ec4899, #8b5cf6);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  z-index: -1;
+}
+
+/* Button hover state */
+.start-button:hover {
+  transform: translateY(-3px) scale(1.03);
+  box-shadow: 
+    0 12px 40px rgba(139, 92, 246, 0.6),
+    0 6px 20px rgba(236, 72, 153, 0.5),
+    0 0 30px rgba(167, 139, 250, 0.4);
+}
+
+.start-button:hover::before {
+  opacity: 1;
+}
+
+/* Button active/click state */
+.start-button:active {
+  transform: translateY(-1px) scale(1.01);
+}
+
+/* Add a subtle pulse animation to draw attention */
+@keyframes buttonPulse {
+  0%, 100% {
+    box-shadow: 
+      0 8px 30px rgba(139, 92, 246, 0.4),
+      0 4px 15px rgba(236, 72, 153, 0.3);
+  }
+  50% {
+    box-shadow: 
+      0 10px 35px rgba(139, 92, 246, 0.5),
+      0 6px 20px rgba(236, 72, 153, 0.4),
+      0 0 20px rgba(167, 139, 250, 0.3);
+  }
+}
+
+.start-button {
+  animation: buttonPulse 2s ease-in-out infinite;
+}
+
+/* Stop pulse on hover */
+.start-button:hover {
+  animation: none;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .logo-wrapper {
+    transform: scale(1.3); /* Slightly smaller on tablets */
+  }
+  
+  .start-logo {
+    max-width: 270px;
+  }
+  
+  .start-content .tagline,
+  .start-content p {
+    font-size: 1.1rem;
+    margin: 1.5rem auto;
+    max-width: 500px;
+  }
+  
+  .start-button {
+    padding: 1.1rem 3rem;
+    font-size: 1.1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .logo-wrapper {
+    transform: scale(1.1); /* More conservative on mobile */
+    margin-bottom: 1.5rem;
+  }
+  
+  .start-logo {
+    max-width: 210px;
+  }
+  
+  .start-content .tagline,
+  .start-content p {
+    font-size: 1rem;
+    margin: 1rem auto;
+    padding: 0 1rem;
+  }
+  
+  .start-button {
+    padding: 1rem 2.5rem;
+    font-size: 1rem;
+    letter-spacing: 1px;
+  }
+}
+
+/* Optional: Add breathing animation to logo */
+@keyframes logoBreathe {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+}
+
+.logo-wrapper {
+  animation: logoBreathe 4s ease-in-out infinite;
+}
+
+/* Adjust spacing since we removed the headline */
+.start-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0; /* Remove gap, we'll use margins instead */
+}
+
+/* Tighten up the layout */
+.start-content > * {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.logo-wrapper {
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+}
+
+.start-content .tagline,
+.start-content p {
+  margin-top: 0;
+  margin-bottom: 2rem;
+}
+/* ====================================
+   PROPER FIX FOR TAGLINE & SPACING
+   Based on actual HTML structure
+   ==================================== */
+
+/* Fix 1: Show and style the "Premium Live Entertainment" tagline */
+.start-content > .tagline:first-child {
+  /* Override any hiding */
+  display: block !important;
+  
+  /* Styling for "Premium Live Entertainment" */
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: #a78bfa;
+  margin-bottom: 2rem;
+  margin-top: 0;
+  opacity: 0.9;
+  text-shadow: 0 2px 10px rgba(139, 92, 246, 0.5);
+  line-height: 1.2;
+  max-width: 100%;
+}
+
+/* Fix 2: The description text (the one that says "Thousands of women...") */
+.start-content p,
+.start-content .tagline:not(:first-child) {
+  font-size: 1.25rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.9);
+  margin: 1.5rem auto 2rem;
+  max-width: 600px;
+  font-weight: 400;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  letter-spacing: 0.3px;
+}
+
+/* Fix 3: Proper spacing between button and icons */
+.start-button {
+  margin-top: 2rem;
+  margin-bottom: 3rem; /* Increased space below button */
+}
+
+/* Fix 4: Ensure icons have space above them */
+.start-features {
+  margin-top: 3rem;
+  padding-top: 1rem;
+}
+
+/* Fix 5: Remove any conflicting rules */
+.start-content .tagline {
+  /* Reset any previous overrides */
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+}
+
+/* Then specifically target the first tagline again */
+.start-content > .tagline:first-child {
+  font-size: 0.85rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 3px !important;
+  text-transform: uppercase !important;
+  color: #a78bfa !important;
+  margin-bottom: 2rem !important;
+  margin-top: 0 !important;
+  opacity: 0.9 !important;
+  text-shadow: 0 2px 10px rgba(139, 92, 246, 0.5) !important;
+}
+
+/* Fix 6: Overall content spacing */
+.start-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+}
+
+/* Fix 7: Logo spacing */
+.logo-wrapper {
+  margin-top: 0;
+  margin-bottom: 2rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .start-content > .tagline:first-child {
+    font-size: 0.75rem !important;
+    letter-spacing: 2px !important;
+    margin-bottom: 1.5rem !important;
+  }
+  
+  .start-button {
+    margin-bottom: 2.5rem;
+  }
+  
+  .start-features {
+    margin-top: 2.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .start-content > .tagline:first-child {
+    font-size: 0.7rem !important;
+    letter-spacing: 1.5px !important;
+  }
+  
+  .start-button {
+    margin-bottom: 2rem;
+  }
+  
+  .start-features {
+    margin-top: 2rem;
+  }
+}
+.start-logo {
+  object-fit: contain;
+  object-position: center center;
+  margin-left: auto;
+  margin-right: auto;
+  display: block;
+}
+.start-features {
+    margin-top: -12px;
+  }
+  /* Force smaller logo on mobile - add at bottom */
+@media (max-width: 640px) {
+  .start-logo {
+    width: 180px !important;
+    max-width: 90vw !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .start-logo {
+    width: 150px !important;
+    max-width: 85vw !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .start-logo {
+    width: 130px !important;
+    max-width: 80vw !important;
+  }
+}
+/* Block iframe interactions */
+.partner-iframe {
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Transparent click blocker overlay */
+.iframe-click-blocker {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  z-index: 5; /* Lower than your controls (which are 20+) */
+  pointer-events: auto;
+  cursor: default;
+}
+</style>
+
+</head>
+<body>
+
+<div class="video-chat-container loading">
+  <!-- Start Screen Overlay -->
+  <div id="startScreen" class="start-screen">
+    <div class="start-content">
+
+      <div class="tagline">Premium Live Entertainment</div>
+
+      <!-- Logo inside its own background block -->
+      <div class="logo-wrapper">
+        <img src="https://xcam.vip/wp-content/uploads/2025/10/xcam-vip-logo.png" 
+             alt="xcam.VIP Logo" 
+             class="start-logo">
+      </div>
+
+
+      <!-- Subtext with key benefits -->
+      <p class="start-subtext">Thousands of women, men, couples & trans are live right now. 100% free — no email required.</p>
+
+      <!-- CTA Button -->
+      <button id="startBtn" class="start-button">Chat now!</button>
+    
+      <!-- Features (Affiliate Honest Version) -->
+      <div class="start-features">
+        <div class="start-feature">
+          <div class="start-feature-icon">👩</div>
+          <div>Thousands live now</div>
+        </div>
+        <div class="start-feature">
+          <div class="start-feature-icon">💸</div>
+          <div>100% free forever</div>
+        </div>
+        <div class="start-feature">
+          <div class="start-feature-icon">📧</div>
+          <div>No email required</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="chat-container">
+
+    <!-- Header -->
+    <div class="header">
+      <!-- Left: Match -->
+      <div class="filter-section">
+        <span class="filter-label">Show:</span>
+        <div class="gender-filter-container">
+          <button type="button" class="gender-filter" id="genderFilterBtn">
+            <div class="filter-text"><span>Everyone</span></div>
+            <span class="dropdown-arrow">▼</span>
+          </button>
+          <div class="gender-dropdown" id="genderDropdown">
+          <div class="dropdown-item" data-gender="all">
+  <span class="icon">★</span><span>Everyone</span>
+</div>
+          <div class="dropdown-item" data-gender="women">
+            <span class="icon">♀</span><span>Female Only</span>
+          </div>
+          <div class="dropdown-item" data-gender="men">
+            <span class="icon">♂</span><span>Male Only</span>
+          </div>
+          <div class="dropdown-item" data-gender="trans">
+            <span class="icon">⚧</span><span>Trans Only</span>
+          </div>
+          <div class="dropdown-item" data-gender="couples">
+            <span class="icon">❤</span><span>Couples Only</span>
+          </div>
+        </div>
+        </div>
+      </div>
+
+      <!-- Center: Online -->
+      <div class="header-center">
+        <div class="online-count" id="onlineCount">
+          <div class="online-dot"></div>
+          <span id="onlineNum">3,847</span> live
+        </div>
+      </div>
+
+      <!-- Right: Muted Sound Icon -->
+      <div class="header-right">
+        <button class="audio-toggle" id="mutedSoundIcon" type="button" aria-label="Enable Sound">
+          <svg class="mic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+            <line x1="23" y1="9" x2="17" y2="15"></line>
+            <line x1="17" y1="9" x2="23" y2="15"></line>
+          </svg>
+        </button>
+      </div>
+  </div>
+
+    <!-- Main -->
+    <div class="main-content">
+      <div class="video-area">
+
+        <!-- LIVE: center-crop locked with dual iframe system -->
+        <div class="live-wrap" id="liveWrap">
+          <div class="live-canvas" id="liveCanvas">
+            <iframe id="partnerIframe1" class="partner-iframe visible" title="Live stream"
+                    allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+                    scrolling="no" referrerpolicy="no-referrer"></iframe>
+            <iframe id="partnerIframe2" class="partner-iframe hidden" title="Live stream"
+                    allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+                    scrolling="no" referrerpolicy="no-referrer"></iframe>
+                    <!-- ADD THIS: Click blocker overlay -->
+    <div class="iframe-click-blocker" id="iframeClickBlocker"></div>
+          </div>
+        </div>
+
+        <!-- Transition Overlay - Logo Animation Version -->
+        <div class="transition-overlay" id="transitionOverlay">
+          <div class="transition-content">
+            
+            <!-- Animated logo in center -->
+            <div class="transition-logo-animated">
+              <!-- Rotating gradient ring around logo -->
+              <div class="logo-ring"></div>
+              <div class="logo-ring-2"></div>
+              
+              <!-- Logo with pulse -->
+              <img src="https://xcam.vip/wp-content/uploads/2025/10/cropped-Copy-of-Copy-of-x-1.png" alt="xcam" class="logo-main">
+              
+              <!-- Orbiting dots -->
+              <span class="orbit-dot dot-1"></span>
+              <span class="orbit-dot dot-2"></span>
+              <span class="orbit-dot dot-3"></span>
+            </div>
+            
+            <div class="transition-text">Finding someone intriguing</div>
+            <div class="transition-subtext">Fresh face incoming—just a sec.</div>
+            
+            <div class="transition-dots">
+              <span class="dot"></span>
+              <span class="dot"></span>
+              <span class="dot"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- End Chat Overlay -->
+        <div class="end-chat-overlay" id="endChatOverlay">
+          <div class="end-chat-content">
+            <div class="end-chat-main-text">Show completed!</div>
+            <div class="end-chat-sub-text">Ready for another VIP experience?</div>
+            <div class="end-chat-buttons">
+              <button class="end-chat-btn primary" id="spinAgainBtn">Next Performance</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="connecting-message" id="connectingMessage" style="display:none;">
+          <div class="loading-spinner"></div>
+          <span>Connecting to VIP performer...</span>
+        </div>
+
+        <!-- Local PiP camera -->
+        <div class="local-cam is-off" id="localCam" role="button" aria-pressed="false" aria-label="Enable your camera">
+          <button class="cam-close" type="button" aria-label="Turn off camera">×</button>
+          <video id="localVideo" autoplay playsinline muted></video>
+          <div class="local-cam-overlay" aria-live="polite">
+            <div class="cam-ui">
+              <svg class="cam-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <defs>
+                  <linearGradient id="camGrad" x1="2" y1="5" x2="22" y2="19" gradientUnits="userSpaceOnUse">
+                    <stop offset="0" stop-color="#8b45ff"/>
+                    <stop offset="1" stop-color="#6d28d9"/>
+                  </linearGradient>
+                </defs>
+                <rect x="3" y="6.5" width="18" height="12" rx="3" fill="url(#camGrad)" stroke="rgba(255,255,255,.65)" stroke-width="1"/>
+                <rect x="7" y="4.3" width="4.8" height="3.2" rx="1.1" fill="url(#camGrad)" stroke="rgba(255,255,255,.6)" stroke-width="1"/>
+                <circle cx="12" cy="12.5" r="3.6" fill="rgba(0,0,0,.18)" stroke="rgba(255,255,255,.9)" stroke-width="1.6"/>
+                <circle cx="12" cy="12.5" r="1.2" fill="white" fill-opacity=".95"/>
+              </svg>
+              <div class="cam-text">
+                <div class="cam-title">Enable Camera</div>
+                <div class="cam-sub">For premium interaction</div>
+              </div>
+              <div class="cam-spinner" aria-hidden="true"></div>
+              <button class="cam-retry" type="button">Try again</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Peek -->
+        <button id="btnPeek" class="peek-fab" type="button" aria-label="Preview 5 seconds">
+          <svg class="peek-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+          <span class="peek-text">PEEK</span>
+          <span class="peek-timer">5s</span>
+        </button>
+
+        <!-- Controls -->
+        <div class="controls">
+          <button class="control-btn end-chat" type="button">
+            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="15" y1="9" x2="9" y2="15"></line>
+              <line x1="9" y1="9" x2="15" y2="15"></line>
+            </svg>
+            <span>END SHOW</span>
+          </button>
+          <button class="control-btn next" type="button">
+            <span>NEXT</span>
+            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="13 17 18 12 13 7"></polyline>
+              <polyline points="6 17 11 12 6 7"></polyline>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="chat-input-wrap">
+        <input type="text" class="chat-input" placeholder="Send a VIP message..." id="chatInput">
+        <button class="send-btn" id="sendBtn" type="button" aria-label="Send">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
+            <path d="M3.5 11.5l16.4-6.9c.7-.3 1.4.4 1.1 1.1l-6.9 16.4c-.3.7-1.3.7-1.6 0l-2.6-6.1-6.1-2.6c-.7-.3-.7-1.3 0-1.6Z"
+                  stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+            <path d="M10.9 13.1l7.1-7.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- VIP Modal -->
+  <div class="signup-modal" id="vipModal" style="display:none;">
+    <div class="modal-content">
+      <button class="modal-close-x" onclick="closeVipModal()" type="button" aria-label="Close modal">×</button>
+      <h2>Upgrade to xcam.VIP+</h2>
+      <p id="vipCopy">Unlock unlimited access to premium performers and exclusive content</p>
+  
+      <!-- Dynamic action slot: we'll inject Claim button, questions, or email form here -->
+      <div id="vipActionSlot"></div>
+    </div>
+  </div>
+
+  <!-- Regular Signup Modal -->
+  <div class="signup-modal" id="signupModal" style="display:none;">
+    <div class="modal-content">
+      <button class="modal-close-x" onclick="closeModal()" type="button" aria-label="Close modal">×</button>
+      <h2>Join xcam.VIP+</h2>
+      <p>Get unlimited access to premium performers and exclusive content.</p>
+      <input type="email" class="email-input" placeholder="Enter email for VIP+ membership" id="emailInput">
+      <div>
+        <button class="signup-btn" onclick="handleSignup()">Join VIP+ Club</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ========= ENDPOINTS ========= */
+/* Use the rest_route form if pretty permalinks are off */
+const HOT_ENDPOINT    = '/index.php?rest_route=/wr-pool/v1/hot-next';
+const LEGACY_ENDPOINT = '/index.php?rest_route=/wr-pool/v1/next';
+const PRIME_ENDPOINT  = '/index.php?rest_route=/wr-pool/v1/prime'; // if used
+
+// === Pool helpers (one source of truth)
+function genderToPool(g){
+  switch ((g || 'all').toLowerCase()) {
+    case 'women':   return 'female';
+    case 'men':     return 'male';
+    case 'trans':   return 'trans';
+    case 'couples': return 'couple';
+    case 'all':
+    default:        return 'general';
+  }
+}
+
+function hotEndpointFor(pool){
+  const valid = ['general','female','male','trans','couple'];
+  const p = valid.includes(pool) ? pool : 'general';
+  return `/index.php?rest_route=/wr-pool/v1/hot-next&pool=${encodeURIComponent(p)}`;
+}
+
+
+/* ========= Fallback single live URL ========= */
+const STANDBY_LIVE_SRC =
+  "https://www.xcam.vip/in/?tour=6o0b&campaign=roGHG&track=embed&disable_sound=1&mobileRedirect=auto&embed_video_only=1";
+  /* ===== VIP Claim Flow: 'email' (simple) or 'qs' (2–3 questions then email) ===== */
+const CLAIM_FLOW = 'qs'; // change to 'email' if you prefer no questions
+
+async function fetchPreferredNext() {
+  if (!window.wrSession) {
+    window.wrSession = {
+      id: 'sess_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
+    };
+  }
+  
+  const pool = currentPool || 'general';
+  const session = window.wrSession.id;
+  
+  try {
+    const url = `/index.php?rest_route=/wr-pool/v1/next&pool=${encodeURIComponent(pool)}&session=${encodeURIComponent(session)}`;
+    const response = await fetch(url, { cache: 'no-store', credentials: 'omit' });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    
+    const json = await response.json();
+    return pickEmbed(json);
+    
+  } catch (error) {
+    console.error('Fetch error:', error);
+    return STANDBY_LIVE_SRC || null;
+  }
+}
+
+/* ========= Globals ========= */
+let isDropdownOpen = false;
+let localStream = null;
+let preloadTimer = null;
+let preloadedSrc = null;
+let preloadStartTime = 0;
+let currentIframe = 1; // Track which iframe is currently active
+let isTransitioning = false;
+let firstPrimeSrc = null;
+let firstPrimeReady = false;
+let hasPreloaded = false; // you already use this in your 4s preloader
+// === Pool state (persisted) ===
+let currentPool = (localStorage.getItem('wr_pool') || 'general'); // general|female|male|trans|couple
+
+
+// Prime the first match in the INACTIVE iframe, behind the overlay
+async function primeFirstMatchBehindOverlay(){
+  try {
+    // 1) Get a URL
+    firstPrimeSrc = await fetchPreferredNext();
+    if (!firstPrimeSrc) return;
+
+    // 2) Load it into the inactive iframe (hidden behind overlay)
+    const ok = await preloadInBackground(firstPrimeSrc);
+    firstPrimeReady = !!ok;
+    if (firstPrimeReady) {
+      console.log('✅ First match preloaded behind Start screen');
+    }
+  } catch(e){
+    console.warn('Prime behind overlay failed:', e);
+  }
+}
+// One source of truth for the label+icon
+const DISPLAY_MAP = {
+    general: { icon: '⭐',  label: 'Everyone' },   // colored star
+    female:  { icon: '♀️', label: 'Female Only' }, // female sign (emoji variant)
+    male:    { icon: '♂️', label: 'Male Only' },   // male sign (emoji variant)
+    trans:   { icon: '⚧️', label: 'Trans Only' },  // trans symbol (emoji variant)
+    couple:  { icon: '❤️', label: 'Couples Only' } // heart (emoji variant)
+  };
+
+function setFilterLabel(pool) {
+  const m = DISPLAY_MAP[pool] || DISPLAY_MAP.general;
+  const el = document.querySelector('#genderFilterBtn .filter-text span');
+  if (el) el.textContent = `${m.icon} ${m.label}`;
+}
+
+// Call priming ASAP after DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+  // prefer the new key, fall back to legacy if present
+  const legacyGender = localStorage.getItem('wr_gender');
+  const legacyMap = { women:'female', men:'male', trans:'trans', couples:'couple', all:'general' };
+  const savedPool =
+    localStorage.getItem('wr_pool') ||
+    (legacyGender ? (legacyMap[legacyGender] || 'general') : 'general');
+
+  const valid = ['general','female','male','trans','couple'];
+  window.currentPool = valid.includes(savedPool) ? savedPool : 'general';
+
+  try { localStorage.setItem('wr_pool', window.currentPool); } catch {}
+
+
+
+
+  // prime first match behind the start screen
+  primeFirstMatchBehindOverlay();
+});
+
+
+// Start button -> reveal preloaded iframe instantly
+async function onStartClick(){
+  if (isTransitioning) return;
+  isTransitioning = true;
+
+  try {
+    // If preloaded and ready, just swap and go
+    if (firstPrimeReady && firstPrimeSrc) {
+      swapIframes(); // shows the already-loaded inactive iframe
+    } else {
+      // Not ready yet? Fallback: ensure something loads quickly
+      const src = firstPrimeSrc || STANDBY_LIVE_SRC;
+      const inactive = getInactiveIframe();
+      if (inactive && src) inactive.src = src;
+      // Swap now; iframe will fade in when it finishes loading
+      swapIframes();
+    }
+
+    // Hide overlay
+    const ov = document.getElementById('startOverlay');
+    if (ov) ov.style.display = 'none';
+
+    // Arm your regular 4s preloader for the NEXT match
+    hasPreloaded = false;
+    startPreloadTimer();
+    onMatchStart?.();
+  } finally {
+    isTransitioning = false;
+  }
+}
+
+// Bind the button
+document.getElementById('startBtn')?.addEventListener('click', onStartClick);
+
+/* ========= Smart Preloading System with Background Loading ========= */
+function getActiveIframe() {
+  return document.getElementById(`partnerIframe${currentIframe}`);
+}
+
+function getInactiveIframe() {
+  const inactiveIndex = currentIframe === 1 ? 2 : 1;
+  return document.getElementById(`partnerIframe${inactiveIndex}`);
+}
+
+function swapIframes() {
+  const active = getActiveIframe();
+  const inactive = getInactiveIframe();
+  
+  // Smooth cross-fade transition
+  active.classList.remove('visible');
+  active.classList.add('hidden');
+  inactive.classList.remove('hidden');
+  inactive.classList.add('visible');
+  
+  // Update tracking
+  currentIframe = currentIframe === 1 ? 2 : 1;
+  
+  console.log(`🔄 Swapped to iframe${currentIframe}`);
+}
+
+/* ✅ Safer background preloader with cleanup + error handling */
+async function preloadInBackground(src) {
+  if (!src) return false;
+
+  const backgroundIframe = getInactiveIframe();
+
+  return new Promise((resolve) => {
+    let settled = false;
+
+    const cleanup = () => {
+      backgroundIframe.removeEventListener('load', onLoad);
+      backgroundIframe.removeEventListener('error', onError);
+      clearTimeout(timeout);
+    };
+
+    const onLoad = () => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      window.__wetroulette?.applyCrop?.();
+      console.log('✅ Background iframe loaded and ready');
+      resolve(true);
+    };
+
+    const onError = () => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      console.log('❌ Background iframe error while loading');
+      resolve(false);
+    };
+
+    const timeout = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      console.log('⏰ Background preload timeout');
+      resolve(false);
+    }, 8000);
+
+    backgroundIframe.addEventListener('load', onLoad);
+    backgroundIframe.addEventListener('error', onError);
+    backgroundIframe.src = src;
+    console.log('🔄 Loading in background iframe:', src);
+  });
+}
+
+function startPreloadTimer() {
+  // Clear any existing timer
+  clearTimeout(preloadTimer);
+  preloadedSrc = null;
+  
+  // Wait 12 seconds before preloading (indicates user engagement)
+  preloadTimer = setTimeout(async () => {
+    try {
+      console.log('🔄 Fetching next match URL...');
+      preloadStartTime = performance.now();
+      
+      const fetchedSrc = await fetchPreferredNext();
+
+      
+      if (fetchedSrc) {
+        const fetchTime = Math.round(performance.now() - preloadStartTime);
+        console.log(`📡 URL fetched in ${fetchTime}ms, starting background load...`);
+        
+        // Start loading in background iframe
+        const loadSuccess = await preloadInBackground(fetchedSrc);
+        
+        if (loadSuccess) {
+          preloadedSrc = fetchedSrc;
+          console.log('🚀 Seamless transition ready - next click will be instant!');
+        } else {
+          console.log('❌ Background loading failed - will use overlay method');
+        }
+      } else {
+        console.log('⚠️ No valid URL returned from server');
+      }
+    } catch(e) {
+      console.log('❌ Preload failed:', e.message);
+      preloadedSrc = null;
+    }
+  }, 100);
+}
+
+function clearPreloadTimer() {
+  clearTimeout(preloadTimer);
+  preloadTimer = null;
+}
+
+/* ========= Random Transition Texts ========= */
+const TRANSITION_TEXTS = [
+  { main: "Real people, not clips", sub: "Video chat is live, playful, and personal." },
+  { main: "More than just watching", sub: "Live faces react to you in real time." },
+  { main: "Your vibe, your match", sub: "Pick who you want — women, couples, more." },
+  { main: "Skip endless scrolling", sub: "One match at a time. Real chemistry." },
+  { main: "See and be seen", sub: "Unlike porn, this is live and unpredictable." },
+  { main: "A real hello beats autoplay", sub: "Genuine reactions. No script." },
+  { main: "Make it your type", sub: "Filter by who you want to meet." },
+  { main: "Unblur the fun", sub: "Clear view, sound, and chat unlocked." },
+  { main: "Free to explore", sub: "No email required. Your rules." },
+  { main: "Just like a real moment", sub: "Someone’s live on the other side." },
+  { main: "Set the vibe", sub: "Filter by gender. Get matches that fit you." },
+  { main: "This isn’t a video", sub: "It’s live, right now." },
+  { main: "Pick what feels right", sub: "Control who you see and how you connect." },
+  { main: "No pressure, just real", sub: "Join when you’re ready. Watch free." },
+  { main: "More spark. Less scroll.", sub: "One quick step unlocks it all." },
+  { main: "Live beats pre-recorded", sub: "Every moment is unique. No reruns." },
+  { main: "Stay curious", sub: "The fun part is what happens next." },
+  { main: "Upgrade the experience", sub: "Unblur, turn on sound, and actually talk." },
+  { main: "Your space, your pace", sub: "Free access. No push. Just connection." },
+  { main: "It’s better live", sub: "Because real people > pixels." }
+];
+
+let lastTextIndex = -1;
+function getRandomTransitionText() {
+  let randomIndex;
+  do {
+    randomIndex = Math.floor(Math.random() * TRANSITION_TEXTS.length);
+  } while (randomIndex === lastTextIndex && TRANSITION_TEXTS.length > 1);
+  lastTextIndex = randomIndex;
+  return TRANSITION_TEXTS[randomIndex];
+}
+
+/* ========= Transition Overlay Functions ========= */
+function showTransitionOverlay() {
+  const overlay = document.getElementById('transitionOverlay');
+  if (!overlay) return;
+
+  // Randomize copy each time the overlay shows
+  const { main, sub } = getRandomTransitionText();
+  const mainText = overlay.querySelector('.transition-text');
+  const subText  = overlay.querySelector('.transition-subtext');
+  if (mainText) mainText.textContent = main;
+  if (subText)  subText.textContent  = sub;
+
+  overlay.classList.add('show');
+}
+
+function hideTransitionOverlay() {
+  const overlay = document.getElementById('transitionOverlay');
+  if (overlay) {
+    overlay.classList.remove('show');
+  }
+}
+
+/* ========= End Chat Overlay Functions ========= */
+function showEndChatOverlay() {
+  const overlay = document.getElementById('endChatOverlay');
+  if (overlay) {
+    overlay.classList.add('show');
+  }
+}
+
+function hideEndChatOverlay() {
+  const overlay = document.getElementById('endChatOverlay');
+  if (overlay) {
+    overlay.classList.remove('show');
+  }
+}
+
+function handleEndChat() {
+  clearPreloadTimer();
+  showEndChatOverlay();
+}
+
+function handleSpinAgain() {
+  hideEndChatOverlay();
+  // Clear any preloaded content to force transition overlay
+  preloadedSrc = null;
+  // Small delay then load next match (this will show transition overlay)
+  setTimeout(() => {
+    loadNext();
+  }, 100);
+}
+
+function handleExitChat() {
+  hideEndChatOverlay();
+}
+
+function showTransitionFor(duration = 2500) {
+  showTransitionOverlay();
+  setTimeout(() => {
+    hideTransitionOverlay();
+  }, duration);
+}
+
+/* ========= Header / Modals ========= */
+function toggleGenderDropdown(){
+  const dd = document.getElementById('genderDropdown');
+  const btn = document.getElementById('genderFilterBtn');
+  if (!dd || !btn) return;
+  isDropdownOpen = !isDropdownOpen;
+  dd.classList.toggle('show', isDropdownOpen);
+  btn.classList.toggle('open', isDropdownOpen);
+}
+function handleGenderSelect(genderKey){
+  const pool = genderToPool(genderKey);
+
+  // Update label and persist
+  setFilterLabel(pool);
+  currentPool = pool;
+  try { localStorage.setItem('wr_pool', currentPool); } catch {}
+
+  // Close dropdown
+  if (isDropdownOpen) toggleGenderDropdown();
+
+  // Optional event
+  window.dispatchEvent(new CustomEvent('wr:poolChanged', { detail: { pool: currentPool }}));
+
+  // Reset any old preload and show overlay while we fetch from the new pool
+  clearPreloadTimer();
+  preloadedSrc = null;
+  showTransitionOverlay();
+
+  // Warm and swap smoothly from the new pool
+  fetchPreferredNext()
+    .then(src => {
+      if (!src) throw new Error('no src');
+      return preloadInBackground(src).then(() => src);
+    })
+    .then(src => {
+      // Inactive iframe is ready → swap, hide overlay, start next preloader
+      swapIframes();
+      hideTransitionOverlay();
+      startPreloadTimer();
+    })
+    .catch(() => {
+      // Fallback
+      window.__wetroulette?.setLiveSrc(STANDBY_LIVE_SRC);
+      hideTransitionOverlay();
+      startPreloadTimer();
+    });
+}
+
+// --- VIP modal memory gate: if user has an active reservation, always jump to countdown ---
+function openVipAndEitherCountdownOr(freshFlowFn) {
+    const modal = document.getElementById('vipModal');
+    if (!modal) return;
+  
+    // open modal shell
+    modal.style.display = 'flex';
+    setTimeout(() => modal.classList.add('show'), 10);
+  
+    // If a reservation is active, resume the right screen:
+    // - invite SENT  -> show post-email countdown (“Open my email app”, etc.)
+    // - invite NOT sent -> show reservation + countdown + email field
+    if (window.__wetroulette?.isReservationActive?.()) {
+      if (wasInviteSent()) {
+        window.__wetroulette.renderActiveReservationCountdown();
+      } else {
+        window.__wetroulette.renderReservationScreen();
+      }
+      return;
+    }
+  
+    // Otherwise, run the fresh entry flow (Gender Filter / Chat / Peek / Cooldown)
+    freshFlowFn?.();
+  }
+  
+  
+  
+  
+
+// ==== REPLACEMENTS FOR YOUR FOUR ENTRY POINTS ====
+// Shared renderer for the initial Claim screen (no spinner here)
+function renderInitialClaimScreen(titleText, bodyHtml) {
+  const modal = document.getElementById('vipModal');
+  if (!modal) return;
+
+  const h2   = modal.querySelector('h2');
+  const copy = document.getElementById('vipCopy');
+  const slot = document.getElementById('vipActionSlot');
+
+  if (h2)   h2.textContent = titleText || 'VIP Required';
+  if (copy) copy.innerHTML = bodyHtml || 'VIP access is by invitation only.';
+
+  if (slot) {
+    slot.innerHTML = `<button id="claimBtn" class="claim-btn" type="button">Claim your invitation</button>`;
+    requestAnimationFrame(() => document.getElementById('claimBtn')?.classList.add('show'));
+    document.getElementById('claimBtn')?.addEventListener('click', onClaimInvitation);
+  }
+}
+
+// Gender filter / main VIP CTA
+function showVipModal() {
+  openVipAndEitherCountdownOr(() => {
+    renderInitialClaimScreen(
+      'Join This Model\'s Room',
+      `
+      <div style="text-align: left; margin: 20px 0;">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+          <div style="color: #8b45ff; font-size: 20px;">👩</div>
+          <div><strong>Enter This Model's Room</strong> - Private shows, cam2cam & direct interaction</div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+          <div style="color: #ef4444; font-size: 20px;">💸</div>
+          <div><strong>Always Free</strong> - Chat & tip this performer (optional)</div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+          <div style="color: #10b981; font-size: 20px;">✉️</div>
+          <div><strong>No Email Required</strong> - Just pick a username</div>
+        </div>
+        <div style="font-size: 12px; opacity: 0.7; text-align: center; margin-top: 15px;">
+          💡 Pick a username and you'll land directly in <strong>this model's room</strong> — always free
+        </div>
+      </div>
+      `
+    );
+    setupDirectRedirect();
+  });
+}
+
+  
+function showChatVipModal() {
+  openVipAndEitherCountdownOr(() => {
+    renderInitialClaimScreen(
+      'Start Chatting — Instantly',
+      `
+      <div style="
+        text-align: left;
+        margin: 24px 0;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      ">
+        <!-- Bullet 1: Community Scale -->
+        <div style="
+          display: flex;
+          align-items: flex-start;
+          gap: 14px;
+          margin-bottom: 16px;
+          padding: 12px;
+          background: rgba(139, 69, 255, 0.08);
+          border-radius: 10px;
+          border-left: 3px solid rgba(139, 69, 255, 0.5);
+        ">
+          <div style="
+            font-size: 24px;
+            flex-shrink: 0;
+            line-height: 1;
+            margin-top: 2px;
+          ">👩</div>
+          <div>
+            <div style="
+              font-weight: 700;
+              font-size: 15px;
+              margin-bottom: 4px;
+              color: #fff;
+            ">Thousands Online Right Now</div>
+            <div style="
+              font-size: 13px;
+              opacity: 0.85;
+              line-height: 1.4;
+            ">Women, couples, men & trans — live and streaming</div>
+          </div>
+        </div>
+
+        <!-- Bullet 2: Free + Tipping Seed -->
+        <div style="
+          display: flex;
+          align-items: flex-start;
+          gap: 14px;
+          margin-bottom: 16px;
+          padding: 12px;
+          background: rgba(139, 69, 255, 0.08);
+          border-radius: 10px;
+          border-left: 3px solid rgba(139, 69, 255, 0.5);
+        ">
+          <div style="
+            font-size: 24px;
+            flex-shrink: 0;
+            line-height: 1;
+            margin-top: 2px;
+          ">💸</div>
+          <div>
+            <div style="
+              font-weight: 700;
+              font-size: 15px;
+              margin-bottom: 4px;
+              color: #fff;
+            ">Always Free</div>
+            <div style="
+              font-size: 13px;
+              opacity: 0.85;
+              line-height: 1.4;
+            ">Tip performers you love (optional)</div>
+          </div>
+        </div>
+
+        <!-- Bullet 3: Email Optional -->
+        <div style="
+          display: flex;
+          align-items: flex-start;
+          gap: 14px;
+          margin-bottom: 20px;
+          padding: 12px;
+          background: rgba(139, 69, 255, 0.08);
+          border-radius: 10px;
+          border-left: 3px solid rgba(139, 69, 255, 0.5);
+        ">
+          <div style="
+            font-size: 24px;
+            flex-shrink: 0;
+            line-height: 1;
+            margin-top: 2px;
+          ">✉️</div>
+          <div>
+            <div style="
+              font-weight: 700;
+              font-size: 15px;
+              margin-bottom: 4px;
+              color: #fff;
+            ">No Email Required</div>
+            <div style="
+              font-size: 13px;
+              opacity: 0.85;
+              line-height: 1.4;
+            ">Just a nickname — email only for notifications when favorites go live</div>
+          </div>
+        </div>
+
+        <!-- Footer Reason Why -->
+        <div style="
+          font-size: 12px;
+          opacity: 0.65;
+          border-top: 1px solid rgba(255, 255, 255, 0.1);
+          padding-top: 14px;
+          line-height: 1.5;
+          text-align: center;
+        ">
+          💡 Quick join unlocks chat, sound & full features — always free
+        </div>
+      </div>
+      `
+    );
+    setupDirectRedirect();
+  });
+}
+  // Sound VIP Modal with Direct Redirect
+  function showSoundVipModal() {
+    openVipAndEitherCountdownOr(() => {
+      renderInitialClaimScreen(
+        'Enable Sound & Full Features',
+        `
+        <div style="
+          text-align: left;
+          margin: 24px 0;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        ">
+          <!-- Bullet 1: Community Scale -->
+          <div style="
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            margin-bottom: 16px;
+            padding: 12px;
+            background: rgba(139, 69, 255, 0.08);
+            border-radius: 10px;
+            border-left: 3px solid rgba(139, 69, 255, 0.5);
+          ">
+            <div style="
+              font-size: 24px;
+              flex-shrink: 0;
+              line-height: 1;
+              margin-top: 2px;
+            ">👩</div>
+            <div>
+              <div style="
+                font-weight: 700;
+                font-size: 15px;
+                margin-bottom: 4px;
+                color: #fff;
+              ">Thousands Online Right Now</div>
+              <div style="
+                font-size: 13px;
+                opacity: 0.85;
+                line-height: 1.4;
+              ">Women, couples, men & trans — live and streaming</div>
+            </div>
+          </div>
+  
+          <!-- Bullet 2: Free + Tipping Seed -->
+          <div style="
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            margin-bottom: 16px;
+            padding: 12px;
+            background: rgba(139, 69, 255, 0.08);
+            border-radius: 10px;
+            border-left: 3px solid rgba(139, 69, 255, 0.5);
+          ">
+            <div style="
+              font-size: 24px;
+              flex-shrink: 0;
+              line-height: 1;
+              margin-top: 2px;
+            ">💸</div>
+            <div>
+              <div style="
+                font-weight: 700;
+                font-size: 15px;
+                margin-bottom: 4px;
+                color: #fff;
+              ">Always Free</div>
+              <div style="
+                font-size: 13px;
+                opacity: 0.85;
+                line-height: 1.4;
+              ">Tip performers you love (optional)</div>
+            </div>
+          </div>
+  
+          <!-- Bullet 3: Email Optional -->
+          <div style="
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            margin-bottom: 20px;
+            padding: 12px;
+            background: rgba(139, 69, 255, 0.08);
+            border-radius: 10px;
+            border-left: 3px solid rgba(139, 69, 255, 0.5);
+          ">
+            <div style="
+              font-size: 24px;
+              flex-shrink: 0;
+              line-height: 1;
+              margin-top: 2px;
+            ">✉️</div>
+            <div>
+              <div style="
+                font-weight: 700;
+                font-size: 15px;
+                margin-bottom: 4px;
+                color: #fff;
+              ">No Email Required</div>
+              <div style="
+                font-size: 13px;
+                opacity: 0.85;
+                line-height: 1.4;
+              ">Just a nickname — email only for notifications when favorites go live</div>
+            </div>
+          </div>
+  
+          <!-- Footer Reason Why -->
+          <div style="
+            font-size: 12px;
+            opacity: 0.65;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: 14px;
+            line-height: 1.5;
+            text-align: center;
+          ">
+            💡 Quick join unlocks sound, HD quality & full features — always free
+          </div>
+        </div>
+        `
+      );
+      setupDirectRedirect();
+    });
+  }
+  
+  // Make sure this event listener is still there:
+  document.getElementById('mutedSoundIcon')?.addEventListener('click', showSoundVipModal);
+  
+  function showPeekVipModal() {
+    openVipAndEitherCountdownOr(() => {
+      renderInitialClaimScreen(
+        'Unlimited Peeks - Join Now',
+        `
+        <div style="text-align: left; margin: 20px 0;">
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+            <div style="color: #8b45ff; font-size: 20px;">👁️</div>
+            <div><strong>Unlimited Peeks</strong> - No hourly limits</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+            <div style="color: #ef4444; font-size: 20px;">⚡</div>
+            <div><strong>Instant Access</strong> - No waiting between peeks</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+            <div style="color: #10b981; font-size: 20px;">🔥</div>
+            <div><strong>Premium Content</strong> - Full access to all rooms</div>
+          </div>
+        </div>
+        `
+      );
+      setupDirectRedirect();
+    });
+  }
+  
+  function showCooldownModal() {
+    openVipAndEitherCountdownOr(() => {
+      renderInitialClaimScreen(
+        'You\'re Loving It — Join Free',
+        `
+        <div style="text-align: left; margin: 24px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
+          <div style="display: flex; align-items: flex-start; gap: 14px; margin-bottom: 16px; padding: 12px; background: rgba(139, 69, 255, 0.08); border-radius: 10px; border-left: 3px solid rgba(139, 69, 255, 0.5);">
+            <div style="font-size: 24px; flex-shrink: 0; line-height: 1; margin-top: 2px;">👩</div>
+            <div>
+              <div style="font-weight: 700; font-size: 15px; margin-bottom: 4px; color: #fff;">Thousands Online Right Now</div>
+              <div style="font-size: 13px; opacity: 0.85; line-height: 1.4;">Women, couples, men & trans — live and streaming</div>
+            </div>
+          </div>
+          <div style="display: flex; align-items: flex-start; gap: 14px; margin-bottom: 16px; padding: 12px; background: rgba(139, 69, 255, 0.08); border-radius: 10px; border-left: 3px solid rgba(139, 69, 255, 0.5);">
+            <div style="font-size: 24px; flex-shrink: 0; line-height: 1; margin-top: 2px;">💸</div>
+            <div>
+              <div style="font-weight: 700; font-size: 15px; margin-bottom: 4px; color: #fff;">Always Free</div>
+              <div style="font-size: 13px; opacity: 0.85; line-height: 1.4;">Tip performers you love (optional)</div>
+            </div>
+          </div>
+          <div style="display: flex; align-items: flex-start; gap: 14px; margin-bottom: 20px; padding: 12px; background: rgba(139, 69, 255, 0.08); border-radius: 10px; border-left: 3px solid rgba(139, 69, 255, 0.5);">
+            <div style="font-size: 24px; flex-shrink: 0; line-height: 1; margin-top: 2px;">✉️</div>
+            <div>
+              <div style="font-weight: 700; font-size: 15px; margin-bottom: 4px; color: #fff;">No Email Required</div>
+              <div style="font-size: 13px; opacity: 0.85; line-height: 1.4;">Just a nickname — email only for notifications when favorites go live</div>
+            </div>
+          </div>
+          <div style="font-size: 12px; opacity: 0.65; border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 14px; line-height: 1.5; text-align: center;">
+            💡 You're seconds away from the full experience — completely free
+          </div>
+        </div>
+        `
+      );
+      setupDirectRedirect();
+    });
+  }
+  function setupDirectRedirect() {
+    // Remove the setTimeout delay - execute immediately
+    const claimBtn = document.getElementById('claimBtn');
+    
+    if (claimBtn) {
+      claimBtn.textContent = 'Join Free & Continue';
+      
+      const newBtn = claimBtn.cloneNode(true);
+      claimBtn.parentNode.replaceChild(newBtn, claimBtn);
+      
+      newBtn.addEventListener('click', function() {
+        function getCurrentUsername() {
+          const activeIframe = document.querySelector('.partner-iframe.visible');
+          if (!activeIframe || !activeIframe.src) return null;
+          
+          const match = activeIframe.src.match(/\/embed\/([^\/\?]+)/);
+          return match ? decodeURIComponent(match[1]) : null;
+        }
+        
+        const currentUsername = getCurrentUsername();
+        
+        let url;
+        if (currentUsername) {
+          url = `https://www.xcam.vip/accounts/register/?track=xcamvip&room=${currentUsername}`;
+        } else {
+          url = 'https://www.xcam.vip/accounts/register/?track=xcamvip';
+        }
+        
+        const link = document.createElement('a');
+        link.href = url;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        
+        setTimeout(() => {
+          if (document.visibilityState === 'visible') {
+            window.location.href = url;
+          }
+          document.body.removeChild(link);
+        }, 500);
+        
+        closeVipModal();
+      });
+    }
+  }
+  function showJoinAccessPopup() {
+  openVipAndEitherCountdownOr(() => {
+    renderInitialClaimScreen(
+      'Join Thousands of Members',
+      `
+      <div style="text-align: left; margin: 20px 0;">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+          <div style="color: #8b45ff; font-size: 20px;">🎯</div>
+          <div><strong>Direct Access</strong> - Premium performers</div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+          <div style="color: #ef4444; font-size: 20px;">💬</div>
+          <div><strong>Private Messaging</strong> - Cam2cam available</div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+          <div style="color: #10b981; font-size: 20px;">🎁</div>
+          <div><strong>Free Tokens</strong> - For new members</div>
+        </div>
+        <div style="font-size: 12px; opacity: 0.7; text-align: center; margin-top: 15px;">
+          Free to join • 18+ only • Thousands online now
+        </div>
+      </div>
+      `
+    );
+    
+    setTimeout(() => {
+      const claimBtn = document.getElementById('claimBtn');
+      
+      if (claimBtn) {
+        claimBtn.textContent = 'Continue to Models';
+        
+        // Remove all existing event listeners
+        const newBtn = claimBtn.cloneNode(true);
+        claimBtn.parentNode.replaceChild(newBtn, claimBtn);
+        
+        // Add new event listener with debugging
+        newBtn.addEventListener('click', function() {
+  console.log('Button clicked - attempting redirect');
+  
+  // Get the current username from the active iframe
+  function getCurrentUsername() {
+    const activeIframe = document.querySelector('.partner-iframe.visible');
+    if (!activeIframe || !activeIframe.src) return null;
+    
+    const match = activeIframe.src.match(/\/embed\/([^\/\?]+)/);
+    return match ? decodeURIComponent(match[1]) : null;
+  }
+  
+  const currentUsername = getCurrentUsername();
+  
+  // Build registration URL with room parameter
+  let url;
+  if (currentUsername) {
+    url = `https://www.xcam.vip/accounts/register/?track=xcamvip&room=${currentUsername}`;
+    console.log('Redirecting to registration with room:', currentUsername);
+  } else {
+    url = 'https://www.xcam.vip/accounts/register/?track=xcamvip';
+    console.log('No current model, redirecting to general registration');
+  }
+  
+  // Method 3: Link click approach (most ad-blocker friendly)
+  const link = document.createElement('a');
+  link.href = url;
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  document.body.appendChild(link);
+  link.click();
+  
+  // Method 2: Fallback detection
+  setTimeout(() => {
+    if (document.visibilityState === 'visible') {
+      // User still on page, new tab likely blocked - redirect same tab
+      window.location.href = url;
+    }
+    document.body.removeChild(link);
+  }, 500);
+  
+  closeVipModal();
+});
+      }
+    }, 300);
+  });
+}
+
+// Connect to your button  
+document.getElementById('audioToggle')?.addEventListener('click', showJoinAccessPopup);
+  
+  
+
+/* Claim click → choose flow */
+function onClaimInvitation() {
+    if (CLAIM_FLOW === 'email') {
+      renderEmailForm();
+    } else {
+        window.__wetroulette?.startClaimQuestionsFlow?.();
+    }
+  }
+  
+  
+
+function getSavedVipEmail(){
+    try { return (localStorage.getItem('vip_email') || '').trim(); } catch(_) { return ''; }
+  }
+/* Re-usable: write title + checking block, and clear #vipActionSlot */
+function setVipCopyWithChecking(copyTitle, copyHtml) {
+    const title = document.querySelector('#vipModal h2');
+    const p     = document.getElementById('vipCopy');
+    const slot  = document.getElementById('vipActionSlot');
+  
+    if (title) { title.style.display = ''; title.textContent = copyTitle; }
+    if (p) {
+      p.style.display = '';
+      p.innerHTML = `${copyHtml}
+        <div class="vip-checking" id="vipChecking">
+          <div class="availability-spinner"></div>
+          <div class="checking-text">Checking for available invitations...</div>
+        </div>`;
+    }
+    if (slot) slot.innerHTML = '';
+  }
+  
+  
+
+  
+
+function closeVipModal(){ 
+  const modal = document.getElementById('vipModal');
+  modal.classList.remove('show');
+  setTimeout(() => modal.style.display = 'none', 280);
+}
+
+function showSignupModal(){ 
+  const modal = document.getElementById('signupModal');
+  modal.style.display = 'flex'; 
+  setTimeout(() => modal.classList.add('show'), 10);
+}
+
+function closeModal(){ 
+  const modal = document.getElementById('signupModal');
+  modal.classList.remove('show');
+  setTimeout(() => modal.style.display = 'none', 280);
+}
+
+function handleVipSignup() {
+  const email = document.getElementById('vipEmailInput')?.value?.trim();
+  const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  
+  if (!isValid) {
+      alert('Please enter a valid email address.');
+      return;
+  }
+  
+    try { localStorage.setItem('vip_email', email); } catch (_) {}
+  
+    // Ensure hold exists (in case user jumped straight here somehow)
+    if (!window.__wetroulette?.isReservationActive?.()) {
+      window.__wetroulette?.setReservationHold?.(30);
+    }
+  
+    // Send (stub now, ESP later)
+    window.__wetroulette?.sendInviteEmail?.(email);
+  
+    // Mark as sent; next time we re-open during the hold, show post-email countdown screen
+    markInviteSent(true);
+  
+    // Swap to the “invite sent” + countdown screen
+    window.__wetroulette?.renderActiveReservationCountdown?.();
+  }
+  
+  
+
+  function handleSignup(){
+    const email = document.getElementById('emailInput').value.trim();
+    const msg = document.getElementById('vipEmailMsg'); // or some inline message area
+    if (email.includes('@')) {
+      // show inline confirmation instead of alert
+      if (msg) msg.textContent = 'Thank you! Check your inbox.';
+      closeModal();
+    } else {
+      if (msg) msg.textContent = 'Please enter a valid email address.';
+    }
+  }
+
+document.getElementById('vipCta')?.addEventListener('click', showVipModal);
+
+/* After "checking" finishes, present big Claim button in former email slot */
+function startAvailabilityCheck(mode = 'preQs') {
+  setTimeout(() => {
+    const checking = document.getElementById('vipChecking');
+    const slot     = document.getElementById('vipActionSlot');
+    const found    = Math.floor(Math.random() * 8) + 3;
+
+    if (checking) {
+      checking.innerHTML = `<div style="color:#48bb78;font-weight:700;">
+        ✓ Found ${found} available invitations
+      </div>`;
+    }
+
+    if (mode === 'afterQs') {
+      if (slot) slot.innerHTML = '';
+      window.__wetroulette?.renderReservationScreen?.();   // ← use exposed helper
+      return;
+    }
+
+    // (preQs path) show Claim button if you ever use it again
+    if (slot) {
+      slot.innerHTML = `<button id="claimBtn" class="claim-btn" type="button">Claim Your Invitation</button>`;
+      requestAnimationFrame(() => document.getElementById('claimBtn')?.classList.add('show'));
+      document.getElementById('claimBtn')?.addEventListener('click', onClaimInvitation);
+    }
+  }, 2000);
+}
+
+
+
+/* Block chat input typing */
+document.getElementById('chatInput')?.addEventListener('focus', (e) => {
+  e.target.blur(); // Remove focus immediately
+  showChatVipModal();
+});
+
+document.getElementById('chatInput')?.addEventListener('click', (e) => {
+  e.preventDefault();
+  showChatVipModal();
+});
+// === Invite-sent state (separate from stored email) ===
+const INVITE_SENT_KEY = 'vip_invite_sent';
+
+function wasInviteSent(){
+  try { return localStorage.getItem(INVITE_SENT_KEY) === '1'; } catch(_) { return false; }
+}
+function markInviteSent(v){
+  try {
+    if (v) localStorage.setItem(INVITE_SENT_KEY, '1');
+    else localStorage.removeItem(INVITE_SENT_KEY);
+  } catch(_) {}
+}
+
+// already suggested earlier; keep it here for convenience
+function getSavedVipEmail(){
+  try { return (localStorage.getItem('vip_email') || '').trim(); } catch(_) { return ''; }
+}
+
+
+/* Block send button */
+document.getElementById('sendBtn')?.addEventListener('click', (e) => {
+  e.preventDefault();
+  showChatVipModal();
+});
+
+/* Block Enter key in chat input */
+document.getElementById('chatInput')?.addEventListener('keydown', (e) => {
+  e.preventDefault();
+  showChatVipModal();
+});
+
+/* ========= Local Camera ========= */
+(function attachVipDevReset(){
+    function resetVipDev() {
+      try {
+        localStorage.removeItem('vip_email');
+        localStorage.removeItem('vip_answers');
+        localStorage.removeItem('vip_res_expires_at');
+        localStorage.removeItem('vip_mode_raw');
+        localStorage.removeItem('vip_pref_raw');
+      } catch(_) {}
+      console.log('[VIP] Dev reset done.');
+    }
+    window.__wetroulette = Object.assign(window.__wetroulette || {}, { resetVipDev });
+  })();
+  
+function setCamState(state, msg){
+  const box = document.getElementById('localCam');
+  if (!box) return;
+  box.classList.remove('is-off','is-loading','is-error','is-active');
+  box.classList.add(`is-${state}`);
+  box.setAttribute('aria-pressed', state === 'active' ? 'true' : 'false');
+
+  const t = box.querySelector('.cam-title');
+  const s = box.querySelector('.cam-sub');
+  if (state === 'off'){ t.textContent='Click to enable camera'; s.textContent=''; }
+  if (state === 'loading'){ t.textContent='Starting camera…'; s.textContent='Give your browser permission'; }
+  if (state === 'error'){ t.textContent='Camera blocked'; s.textContent= msg || 'Allow access in site settings and retry'; }
+  if (state === 'active'){ t.textContent='Camera on'; s.textContent=''; }
+}
+async function requestLocalCamera(){
+  const videoEl = document.getElementById('localVideo');
+  if (!isSecureContext && location.hostname !== 'localhost'){ setCamState('error','HTTPS required'); alert('Camera access requires HTTPS.'); return; }
+  try{
+    if (!navigator.mediaDevices?.getUserMedia){ setCamState('error','Not supported'); alert('Camera not supported in this browser.'); return; }
+    setCamState('loading');
+    const constraints = { video:{ facingMode:'user', width:{ideal:720}, height:{ideal:1280}, aspectRatio:9/16 }, audio:false };
+    localStream = await navigator.mediaDevices.getUserMedia(constraints);
+    videoEl.srcObject = localStream; videoEl.style.display='block';
+    document.getElementById('localCam').classList.add('active');
+    setCamState('active');
+  }catch(err){
+    console.error(err);
+    let msg='Could not access the camera.';
+    if (err.name==='NotAllowedError'||err.name==='SecurityError') msg='Permission blocked. Allow in site settings and reload.';
+    else if (err.name==='NotFoundError'||err.name==='OverconstrainedError') msg='No camera found or unsupported resolution.';
+    else if (err.name==='NotReadableError') msg='Camera is in use by another app.';
+    setCamState('error',msg); alert(msg);
+  }
+}
+function stopLocalCamera(){
+  const videoEl = document.getElementById('localVideo');
+  if (localStream){ localStream.getTracks().forEach(t=>t.stop()); localStream=null; }
+  if (videoEl){ videoEl.srcObject=null; videoEl.style.display='none'; }
+  document.getElementById('localCam')?.classList.remove('active');
+  setCamState('off');
+}
+
+/* ========= Online count (same as your working) ========= */
+(function(){
+  var min=22000, max=25000; var el=document.getElementById('onlineNum'); var box=document.getElementById('onlineCount');
+  if(!el||!box) return; var n=Math.floor(min+Math.random()*(max-min)); el.textContent=n.toLocaleString(); box.setAttribute('data-ready','1'); window.__onlineInit=n;
+})();
+const ONLINE_CFG={min:22000,max:25000,stepMin:-120,stepMax:180,periodMin:9000,periodMax:18000,animMs:1200};
+const onlineSpan=document.getElementById('onlineNum');
+let onlineCurrent=(typeof window.__onlineInit==='number')?window.__onlineInit:Math.floor(ONLINE_CFG.min+Math.random()*(ONLINE_CFG.max-ONLINE_CFG.min));
+function animateNumber(from,to,d){ const start=performance.now(); function f(now){ const t=Math.min(1,(now-start)/d), e=1-Math.pow(1-t,3); const val=Math.round(from+(to-from)*e); if(onlineSpan) onlineSpan.textContent=val.toLocaleString(); if(t<1) requestAnimationFrame(f);} requestAnimationFrame(f); }
+function scheduleNext(){ const w=Math.floor(Math.random()*(ONLINE_CFG.periodMax-ONLINE_CFG.periodMin))+ONLINE_CFG.periodMin; setTimeout(tick,w); }
+function tick(){ const step=Math.floor(Math.random()*(ONLINE_CFG.stepMax-ONLINE_CFG.stepMin+1))+ONLINE_CFG.stepMin; let target=onlineCurrent+step;
+  if(target<ONLINE_CFG.min) target=ONLINE_CFG.min+Math.floor(Math.random()*120);
+  if(target>ONLINE_CFG.max) target=ONLINE_CFG.max-Math.floor(Math.random()*120);
+  animateNumber(onlineCurrent, target, ONLINE_CFG.animMs + Math.floor(Math.random()*600)); onlineCurrent=target; try{localStorage.setItem('online_last', String(onlineCurrent));}catch(e){} scheduleNext(); }
+
+/* ========= Peek / Blur (updated for dual iframe system) ========= */
+const PEEK_CFG={ dailyLimit:10, peekSeconds:5, cooldownSec:6, autoChance:0, lsKey:'peek_state_v2', minuteLimit:2 };
+function setPartnerBlur(on){ 
+  const activeFrame = getActiveIframe();
+  if (activeFrame) activeFrame.classList.toggle('blurred', !!on); 
+}
+function unblurFor(seconds){ setPartnerBlur(false); setTimeout(()=> setPartnerBlur(true), seconds*1000); }
+const currentHour=()=> Math.floor(Date.now() / (1000 * 60 * 60));
+function loadPeek(){ 
+  const raw=localStorage.getItem(PEEK_CFG.lsKey); 
+  const d=raw?JSON.parse(raw):{}; 
+  const currentMin = Math.floor(Date.now() / (1000 * 60));
+  if(d.hour!==currentHour()) return {hour:currentHour(),used:0,last:0,minute:currentMin,minuteUsed:0}; 
+  if(d.minute!==currentMin) d.minuteUsed = 0, d.minute = currentMin;
+  return d; 
+}
+function savePeek(s){ localStorage.setItem(PEEK_CFG.lsKey, JSON.stringify(s)); }
+function peeksLeft(){ const s=loadPeek(); return Math.max(0, PEEK_CFG.dailyLimit-(s.used||0)); }
+function onCooldown(){ const s=loadPeek(); return (Date.now()-(s.last||0))/1000 < PEEK_CFG.cooldownSec; }
+function canPeek(){ 
+  const s = loadPeek();
+  const hourlyOK = (s.used || 0) < PEEK_CFG.dailyLimit;
+  const minuteOK = (s.minuteUsed || 0) < PEEK_CFG.minuteLimit;
+  const cooldownOK = (Date.now()-(s.last||0))/1000 >= PEEK_CFG.cooldownSec;
+  return hourlyOK && minuteOK && cooldownOK;
+}
+function usePeek(){ 
+  const s=loadPeek(); 
+  s.used = (s.used||0) + 1;
+  s.minuteUsed = (s.minuteUsed||0) + 1; 
+  s.last=Date.now(); 
+  savePeek(s); 
+}
+function onMatchStart(){ setPartnerBlur(true); }
+
+// --- Peek click wiring (single source of truth) ---
+let peekBound = false;
+let clickInFlight = false;  // protects against double-fire on the same click/tap
+
+function secondsSince(ts){ return (Date.now() - (ts || 0)) / 1000; }
+
+function onPeekClick() {
+  if (clickInFlight) return;       // guard: ignore if a previous handler is still running
+  clickInFlight = true;
+  setTimeout(() => { clickInFlight = false; }, 50);  // small window is enough
+
+  const s = loadPeek();  // {hour, used, last, minute, minuteUsed}
+
+  const hourUsed   = s.used || 0;           // your "dailyLimit" is actually per-hour (by design)
+  const minuteUsed = s.minuteUsed || 0;
+  const sinceLast  = secondsSince(s.last);
+  const cooldownOK = sinceLast >= PEEK_CFG.cooldownSec;
+
+  // (Optional) debug:
+  // console.log('[peek]', {hourUsed, minuteUsed, sinceLast, cooldownOK, s});
+
+  if (hourUsed >= PEEK_CFG.dailyLimit) {
+    // Out of hourly pool -> VIP upsell
+    showPeekVipModal();
+    return;
+  }
+  if (minuteUsed >= PEEK_CFG.minuteLimit) {
+    // Hit per-minute cap
+    showCooldownModal();
+    return;
+  }
+  if (!cooldownOK) {
+    // Within cooldown seconds of the last peek
+    showCooldownModal();
+    return;
+  }
+
+  // ✅ Allowed
+  usePeek();                                // increments used, minuteUsed, sets last
+  unblurFor(PEEK_CFG.peekSeconds);
+}
+
+function bindPeekOnce() {
+  if (peekBound) return;
+  peekBound = true;
+
+  const btn = document.getElementById('btnPeek');
+  if (!btn) return;
+
+  btn.addEventListener('click', onPeekClick, { passive: true });
+}
+
+
+/* ========= Robust mapper for whatever JSON your fetcher returns ========= */
+function htmlToSrc(html){
+  if (!html) return null;
+  const m = String(html).match(/src=["']([^"']+)["']/i);
+  return m ? m[1] : null;
+}
+function buildEmbedFromUsername(u){
+  if (!u) return null;
+  const uname = encodeURIComponent(u);
+  return `https://www.xcam.vip/embed/${uname}/?campaign=roGHG&disable_sound=1&embed_video_only=1&join_overlay=1&mobileRedirect=auto&room=${uname}&tour=9oGW&track=wetroulette`;
+}
+function pickEmbed(o){
+  if (!o) return null;
+
+  // --- helpers (use your existing htmlToSrc/buildEmbedFromUsername) ---
+  const isListItem = (x) =>
+    !!(x && (x.type === 'list' || x.kind === 'list' || x.is_list === true || x.list_embed_src));
+
+  function firstUrlFrom(x){
+    if (!x) return null;
+
+    // Wrapped payloads
+    if (x.result) { const s = pickEmbed(x.result); if (s) return s; }
+    if (x.data)   { const s = pickEmbed(x.data);   if (s) return s; }
+
+    // Explicit list embed
+    if (typeof x.list_embed_src === 'string') return x.list_embed_src;
+
+    // Known direct URL fields
+    if (typeof x.embed_src === 'string')   return x.embed_src;
+    if (typeof x._player_src === 'string') return x._player_src;
+    if (typeof x.url === 'string' && /^https?:\/\//i.test(x.url)) return x.url;
+
+    // iframe HTML
+    if (typeof x.iframe_embed === 'string') {
+      const s = htmlToSrc(x.iframe_embed); if (s) return s;
+    }
+    if (typeof x.iframe_embed_revshare === 'string') {
+      const s = htmlToSrc(x.iframe_embed_revshare); if (s) return s;
+    }
+
+    // Username → build embed
+    const u = x.username || x.room || x.name || x.model;
+    if (typeof u === 'string' && u.trim()) return buildEmbedFromUsername(u.trim());
+
+    // Plain string (URL / iframe / username)
+    if (typeof x === 'string'){
+      const fromHtml = htmlToSrc(x); if (fromHtml) return fromHtml;
+      if (/^https?:\/\//i.test(x)) return x;
+      return buildEmbedFromUsername(x.trim());
+    }
+    return null;
+  }
+
+  // Arrays: prefer list items first, then anything else
+  if (Array.isArray(o)){
+    const listFirst = o.find(isListItem);
+    if (listFirst){
+      const s = firstUrlFrom(listFirst);
+      if (s) return s;
+    }
+    for (const it of o){
+      const s = firstUrlFrom(it);
+      if (s) return s;
+    }
+    return null;
+  }
+
+  // Single object: if it's a list, prefer its list embed; else normal resolution
+  if (isListItem(o)) {
+    const s = firstUrlFrom(o);
+    if (s) return s;
+  }
+  return firstUrlFrom(o);
+}
+
+
+/* ========= Fetcher integration with Seamless Transitions ========= */
+async function loadNext(){
+  // Prevent multiple simultaneous transitions
+  if (isTransitioning) {
+    console.log('🔒 Transition already in progress, ignoring click');
+    return;
+  }
+  
+  // Clear any active preload timer since we're switching now
+  clearPreloadTimer();
+  
+  // Check if we have a preloaded match ready in background iframe
+  if (preloadedSrc) {
+    console.log('⚡ SEAMLESS TRANSITION - No overlay needed!');
+    isTransitioning = true;
+    
+    // Instant swap - no overlay, no waiting!
+    swapIframes();
+    
+    // Reset and start preloading next match
+    preloadedSrc = null;
+    setTimeout(() => {
+      onMatchStart?.();
+      startPreloadTimer();
+      isTransitioning = false;
+    }, 100);
+    
+    return;
+  }
+  
+  // Fallback: No preload available, use overlay method
+  console.log('⏳ No seamless transition ready - using overlay');
+  isTransitioning = true;
+  showTransitionOverlay();
+  
+  const msg = document.getElementById('connectingMessage');
+  try{
+    if (msg) { msg.style.display='block'; msg.textContent='Finding a live room...'; }
+    const embed = await fetchPreferredNext();
+    if (embed){
+      window.__wetroulette?.setLiveSrc(embed);
+    } else {
+      // No source at all — keep overlay a hair longer but don’t flash a random room
+      console.warn('No embed available from hot/legacy/prime.');
+    }
+    
+  }catch(e){
+    console.warn('loadNext error', e);
+    window.__wetroulette?.setLiveSrc(STANDBY_LIVE_SRC);
+  }finally{
+    if (msg) msg.style.display='none';
+    // Regular 2.5s timeout for on-demand loading
+    setTimeout(() => {
+      hideTransitionOverlay();
+      // Start preloading for next time
+      startPreloadTimer();
+      isTransitioning = false;
+    }, 3000);
+  }
+}
+
+/* ========= Locked Crop (with Transition Overlay integration) ========= */
+(function(){
+  const WRAP_ID='liveWrap', CANVAS_ID='liveCanvas';
+  const LS_KEY='cb_offset_frac_v1';
+  const OFFSET_FRAC_DEFAULT = 0.5002986948977235;
+
+  let OFFSET_FRAC = clamp01(parseFloat(localStorage.getItem(LS_KEY)));
+  if (!isFinite(OFFSET_FRAC)) OFFSET_FRAC = OFFSET_FRAC_DEFAULT;
+
+  function clamp01(v){ return Math.max(0, Math.min(1, v)); }
+  function q(){ return { wrap:document.getElementById(WRAP_ID), canvas:document.getElementById(CANVAS_ID), frame:getActiveIframe() }; }
+  function coverWidthPercent(containerW, containerH){
+    const tileAR=containerW/containerH, mediaAR=16/9;
+    return (tileAR < mediaAR) ? (mediaAR/tileAR)*100 : 100;
+  }
+  function applyCrop(){
+    const {wrap, canvas}=q(); if(!wrap||!canvas) return;
+    const cw=wrap.clientWidth, ch=wrap.clientHeight; if(!cw||!ch) return;
+
+    const wPct = coverWidthPercent(cw, ch);
+    canvas.style.width  = wPct + '%';
+    canvas.style.height = '100%';
+
+    const maxOffset = Math.max(0, canvas.offsetWidth - cw);
+    const pxOffset  = OFFSET_FRAC * maxOffset;
+    canvas.style.left = (-pxOffset) + 'px';
+    canvas.style.top  = '0px';
+
+    // Apply sizing to both iframes
+    const iframe1 = document.getElementById('partnerIframe1');
+    const iframe2 = document.getElementById('partnerIframe2');
+    if (iframe1) { iframe1.style.width='100%'; iframe1.style.height='100%'; }
+    if (iframe2) { iframe2.style.width='100%'; iframe2.style.height='100%'; }
+  }
+  function setLiveSrc(src){
+    const activeFrame = getActiveIframe();
+    if (!activeFrame) return;
+    
+    const msg=document.getElementById('connectingMessage');
+    if (msg){ msg.style.display='block'; msg.textContent='Connecting...'; }
+    activeFrame.src = src;
+    activeFrame.addEventListener('load', ()=> {
+      if (msg) msg.style.display='none';
+      setTimeout(applyCrop, 50);
+      onMatchStart?.();
+      // Start preload timer when new match loads successfully
+      startPreloadTimer();
+    }, { once:true });
+    applyCrop();
+  }
+  function setOffsetFraction(f){
+    OFFSET_FRAC = clamp01(f);
+    try{ localStorage.setItem(LS_KEY, String(OFFSET_FRAC)); }catch(_){}
+    applyCrop();
+  }
+
+  // Expose helpers
+  window.__wetroulette = Object.assign(window.__wetroulette || {}, {
+    applyCrop,
+    setLiveSrc,
+    setOffsetFraction,
+    startClaimQuestionsFlow,
+    renderInvitationSent,
+    renderReservationScreen,
+    // 👇 expose these so outside code can check/use the reservation
+    isReservationActive,
+    renderActiveReservationCountdown,
+  });
+  // Put near your other helpers
+const LABEL_MAP = {
+  general: 'Everyone',
+  female:  'Female Only',
+  male:    'Male Only',
+  trans:   'Trans Only',
+  couple:  'Couples Only'
+};
+const ICON_MAP = {
+  general: '★',
+  female:  '♀',
+  male:    '♂',
+  trans:   '⚧',
+  couple:  '❤'
+};
+
+// Create the icon span once, if missing
+function ensureFilterIconSpan() {
+  const btn = document.getElementById('genderFilterBtn');
+  if (!btn) return null;
+  let wrap = btn.querySelector('.filter-text');
+  if (!wrap) return null;
+
+  let icon = wrap.querySelector('.current-icon');
+  if (!icon) {
+    icon = document.createElement('span');
+    icon.className = 'current-icon';
+    // Put icon before the text
+    wrap.prepend(icon);
+  }
+  return icon;
+}
+
+
+  /* === Two one-tap questions (no Next/Back), then reservation + email + success === */
+/* === Two one-tap questions, then reservation + email + success === */
+const VIP_QS = [
+  { key: 'pref', title: 'Who do you want to match with?',
+    options: ['Women', 'Men', 'Trans', 'Couples', 'Everyone'] },
+  { key: 'mode', title: 'How do you want to use your camera?',
+    options: [
+      '1-on-1 with my camera on',
+      'Watch only (no cam)',
+      'Maybe later / depends'
+    ] },
+];
+
+let vipQsStep = 0;
+const vipAnswers = {};
+
+function startClaimQuestionsFlow() {
+    // ✅ update title as we switch from “VIP required” → questions
+    const titleEl = document.querySelector('#vipModal h2');
+    if (titleEl) titleEl.textContent = 'Claim Your VIP Invite';
+  
+    vipQsStep = 0;
+    for (const k in vipAnswers) delete vipAnswers[k];
+    const p = document.getElementById('vipCopy');
+    if (p) p.innerHTML = '<div style="display:flex;align-items:center;gap:8px;justify-content:center;"><span>Quick setup</span><span style="background:rgba(99,102,241,.2);color:#6366f1;padding:2px 8px;border-radius:12px;font-size:12px;font-weight:700;">2 questions</span></div>';
+    renderQuestionStep();
+  }
+  
+
+  function renderQuestionStep() {
+    const slot = document.getElementById('vipActionSlot');
+    if (!slot) return;
+  
+    const q = VIP_QS[vipQsStep];
+    const isLast = vipQsStep === VIP_QS.length - 1;
+  
+    slot.innerHTML = `
+      <div class="vip-qs">
+        <div style="display:flex;justify-content:center;gap:4px;margin-bottom:12px;">
+          <div style="width:20px;height:4px;border-radius:2px;background:${vipQsStep >= 0 ? '#6366f1' : 'rgba(255,255,255,.2)'}"></div>
+          <div style="width:20px;height:4px;border-radius:2px;background:${vipQsStep >= 1 ? '#6366f1' : 'rgba(255,255,255,.2)'}"></div>
+        </div>
+        <h3>${q.title}</h3>
+        <div class="qs-group">
+          ${q.options.map(opt => `
+            <label class="vip-opt" data-opt="${opt}">
+              <input type="radio" name="vip_q_${q.key}" value="${opt}" ${vipAnswers[q.key]===opt ? 'checked':''}/>
+              <span>${opt}</span>
+            </label>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  
+    // One handler on the slot – works for both label clicks and radio changes
+    const onPick = (val) => {
+      const chosen = val || '';
+      vipAnswers[q.key] = chosen;
+  
+      if (isLast) {
+        try { localStorage.setItem('vip_answers', JSON.stringify(vipAnswers)); } catch(_) {}
+        applyVipPreferences(vipAnswers);
+        startAvailabilityCheckAfterQs(); // -> personalized check -> reservation
+      } else {
+        vipQsStep++;
+        setTimeout(renderQuestionStep, 60);
+      }
+    };
+  
+    // Delegate clicks on label or span
+    slot.addEventListener('click', (e) => {
+      const label = e.target.closest('.vip-opt');
+      if (!label) return;
+      const input = label.querySelector('input[type="radio"]');
+      if (input) input.checked = true;
+      onPick(label.getAttribute('data-opt'));
+    }, { once: true });
+  
+    // Also listen to radio change (covers keyboard navigation)
+    slot.querySelectorAll('.qs-group input[type="radio"]').forEach(input => {
+      input.addEventListener('change', () => onPick(input.value), { once: true });
+    });
+  }
+  // 👇 Place this directly after renderQuestionStep
+  function startAvailabilityCheckAfterQs() {
+    const a = { ...(vipAnswers || {}) };
+    if (!a.pref || !a.mode) {
+      try { Object.assign(a, JSON.parse(localStorage.getItem('vip_answers') || '{}')); } catch (_) {}
+    }
+  
+    const camTxt  = a.mode && a.mode.startsWith('1-on-1') ? 'with camera' : 'without camera';
+    const prefMap = { Women:'women', Men:'men', Trans:'trans', Couples:'couples', Everyone:'everyone' };
+    const prefTxt = prefMap[a.pref] || 'everyone';
+  
+    setVipCopyWithChecking(
+      'Claim Your VIP Invite',
+      `Checking VIP slots for a member <strong>${camTxt}</strong> looking for <strong>${prefTxt}</strong> matches…`
+    );
+  
+    // Start a 30-min hold NOW so we can resume after close/reopen
+    window.__wetroulette?.setReservationHold?.(30);
+    // This reservation is not yet claimed/sent
+    markInviteSent(false);
+  
+    // After the short “checking…” animation, show the reservation screen (email form + countdown)
+    startAvailabilityCheck('afterQs');
+  }
+  
+  
+
+function applyVipPreferences(ans) {
+  try {
+    localStorage.setItem('vip_mode_raw', ans.mode || '');
+    localStorage.setItem('vip_pref_raw', ans.pref || '');
+  } catch(_) {}
+
+  const camBox   = document.getElementById('localCam');
+  const camTitle = camBox?.querySelector('.cam-title');
+  if (ans.mode?.startsWith('1-on-1') && camTitle) camTitle.textContent = 'Click to enable camera';
+  if (ans.mode?.startsWith('Watch')  && camTitle) camTitle.textContent = 'Camera optional';
+
+  const gfBtn = document.getElementById('genderFilterBtn');
+  const labelEl = gfBtn?.querySelector('.filter-text span');
+  if (labelEl) {
+    const p = ans.pref || 'Everyone';
+    labelEl.textContent =
+      p === 'Women'   ? 'Women Only'   :
+      p === 'Men'     ? 'Men Only'     :
+      p === 'Trans'   ? 'Trans Only'   :
+      p === 'Couples' ? 'Couples Only' :
+      'Everyone';
+  }
+}
+  
+  let reserveTimerHandle = null;
+  function startReserveCountdown(minutes = 30) {
+    const end = Date.now() + minutes * 60 * 1000;
+    const out = document.getElementById('reserveCountdown');
+    if (!out) return;
+    clearInterval(reserveTimerHandle);
+    function tick() {
+      const remain = Math.max(0, end - Date.now());
+      const m = Math.floor(remain / 60000);
+      const s = Math.floor((remain % 60000) / 1000);
+      out.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+      if (remain <= 0) clearInterval(reserveTimerHandle);
+    }
+    tick();
+    reserveTimerHandle = setInterval(tick, 1000);
+  }
+  
+  function renderReservationScreen() {
+    const slot = document.getElementById('vipActionSlot');
+    if (!slot) return;
+  
+    // Ensure a hold exists
+    if (!window.__wetroulette?.isReservationActive?.()) {
+      window.__wetroulette?.setReservationHold?.(30);
+    }
+    // We are still pre-email here
+    markInviteSent(false);
+  
+    // Hide the default title/copy above the card
+    const titleEl = document.querySelector('#vipModal h2');
+    const copyEl  = document.getElementById('vipCopy');
+    if (titleEl) titleEl.style.display = 'none';
+    if (copyEl)  copyEl.style.display  = 'none';
+  
+    slot.innerHTML = `
+      <div style="
+        display:grid;gap:12px;
+        background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));
+        border:1px solid rgba(255,255,255,.18);
+        border-radius:16px;
+        padding:14px;
+        color:#e5e7eb;
+      ">
+        <div style="
+          font-size:17px;font-weight:900;
+          background:linear-gradient(90deg,#fff,#f6ad55);
+          -webkit-background-clip:text;background-clip:text;color:transparent;
+          text-align:center;
+        ">🎟️ Invitation reserved for you</div>
+  
+        <div style="display:flex;justify-content:center;">
+          <div style="
+            font-variant-numeric:tabular-nums;
+            font-size:24px;font-weight:900;letter-spacing:.5px;
+            padding:4px 12px;border-radius:12px;
+            background:rgba(99,102,241,.12);
+            border:1px solid rgba(99,102,241,.25);
+          ">
+            <span id="reserveCountdown">--:--</span>
+          </div>
+        </div>
+  
+        <div style="color:#cbd5e1;text-align:center;">
+          Your VIP invitation is held for the next <strong>30 minutes</strong>.<br/>
+          Enter a valid email to receive it now.
+        </div>
+  
+        <div class="vip-email-form" style="margin-top:2px;">
+          <input type="email" class="email-input" placeholder="Enter your email" id="vipEmailInput" />
+          <button class="signup-btn" id="vipEmailSubmit" type="button">Send my invitation</button>
+        </div>
+  
+        <div style="color:#94a3b8;font-size:12px;text-align:center;">
+          We'll send a single secure invite link. No spam.
+        </div>
+      </div>
+    `;
+  
+    // Prefill with any previously-typed email for convenience
+    const saved = getSavedVipEmail();
+    if (saved) {
+      const el = document.getElementById('vipEmailInput');
+      if (el) el.value = saved;
+    }
+
+  
+    document.getElementById('vipEmailSubmit')?.addEventListener('click', handleVipSignupReal);
+  
+    // Drive the timer from stored expiration (survives close/reopen)
+    startReserveCountdownFromStorage();
+  }
+  
+  
+  /* ===== Persistent reservation state ===== */
+const RES_EXPIRES_KEY = 'vip_res_expires_at';  // epoch ms when hold ends
+
+function setReservationHold(minutes = 30) {
+  const expiresAt = Date.now() + minutes * 60 * 1000;
+  try { localStorage.setItem(RES_EXPIRES_KEY, String(expiresAt)); } catch(_) {}
+  return expiresAt;
+}
+function getReservationExpiresAt() {
+  const raw = localStorage.getItem(RES_EXPIRES_KEY);
+  const t = raw ? parseInt(raw, 10) : 0;
+  return Number.isFinite(t) ? t : 0;
+}
+function clearReservationHold() {
+  try { localStorage.removeItem(RES_EXPIRES_KEY); } catch(_) {}
+}
+function isReservationActive() {
+  const t = getReservationExpiresAt();
+  return t > Date.now();
+}
+// ==== Device + provider detection ====
+function isMobileUA(){
+  return /iphone|ipad|ipod|android|mobile/i.test(navigator.userAgent || '');
+}
+function getEmailDomain(addr){
+  const m = String(addr || '').toLowerCase().match(/@([^> ]+)/);
+  return m ? m[1] : '';
+}
+function providerFromDomain(domain){
+  if (!domain) return 'generic';
+  if (/(gmail\.com|googlemail\.com)$/.test(domain)) return 'gmail';
+  if (/(hotmail\.com|outlook\.com|live\.com|msn\.com)$/.test(domain)) return 'outlook';
+  if (/(yahoo\.(com|co\.\w+))$/.test(domain)) return 'yahoo';
+  if (/icloud\.com$/.test(domain)) return 'icloud';
+  if (/(proton\.me|protonmail\.com)$/.test(domain)) return 'proton';
+  if (/aol\.com$/.test(domain)) return 'aol';
+  return 'generic';
+}
+
+// App schemes (best-effort; harmless if not installed)
+function appSchemeFor(provider, toEmail){
+  switch(provider){
+    case 'gmail':   return `googlegmail:///co?to=${encodeURIComponent(toEmail)}`;
+    case 'outlook': return `ms-outlook://compose?to=${encodeURIComponent(toEmail)}`; // iOS Outlook
+    case 'yahoo':   return `ymail://mail/compose?to=${encodeURIComponent(toEmail)}`;
+    case 'aol':     return `aolmail://mail/compose?to=${encodeURIComponent(toEmail)}`;
+    default:        return ''; // icloud/proton/generic: no reliable public compose scheme
+  }
+}
+
+// Webmail home or search page
+function webmailUrlFor(provider){
+  switch(provider){
+    case 'gmail':   return 'https://mail.google.com/';
+    case 'outlook': return 'https://outlook.live.com/mail/';
+    case 'yahoo':   return 'https://mail.yahoo.com/';
+    case 'icloud':  return 'https://www.icloud.com/mail/';
+    case 'proton':  return 'https://mail.proton.me/';
+    case 'aol':     return 'https://mail.aol.com/';
+    default:        return ''; // unknown → no direct webmail
+  }
+}
+
+// Try app scheme → then webmail → finally mailto
+function openMyMailbox(){
+  const to = (localStorage.getItem('vip_email') || '').trim();
+  const provider = providerFromDomain(getEmailDomain(to));
+  const isMobile = isMobileUA();
+
+  // 1) On mobile, attempt app scheme (non-blocking + graceful timeout)
+  if (isMobile){
+    const scheme = appSchemeFor(provider, to);
+    if (scheme){
+      const t0 = Date.now();
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.src = scheme;
+      document.body.appendChild(iframe);
+
+      // After ~800ms, if the tab is still here, fall back to webmail
+      setTimeout(() => {
+        document.body.removeChild(iframe);
+        // If user didn’t switch apps, continue to webmail
+        if (Date.now() - t0 < 2200){
+          const url = webmailUrlFor(provider);
+          if (url) { window.open(url, '_blank'); }
+          else { window.location.href = `mailto:${encodeURIComponent(to)}`; }
+        }
+      }, 800);
+      return;
+    }
+  }
+
+  // 2) Webmail in a new tab (desktop + mobile fallback)
+  const url = webmailUrlFor(provider);
+  if (url){ window.open(url, '_blank'); return; }
+
+  // 3) Last resort: mailto
+  if (to) window.location.href = `mailto:${encodeURIComponent(to)}`;
+}
+
+// Optional convenience: copy email to clipboard (you can use this in “Didn’t get it?”)
+async function copySavedEmailToClipboard(){
+  const to = (localStorage.getItem('vip_email') || '').trim();
+  if (!to){ alert('No email saved yet.'); return; }
+  try {
+    await navigator.clipboard.writeText(to);
+    alert('Your email address was copied to clipboard.');
+  } catch {
+    alert(`Your email: ${to}`);
+  }
+}
+
+/* Start countdown to a fixed timestamp stored in localStorage */
+let reserveTimerHandle2 = null;
+function startReserveCountdownFromStorage() {
+  const out = document.getElementById('reserveCountdown');
+  if (!out) return;
+  clearInterval(reserveTimerHandle2);
+
+  function tick() {
+    const end = getReservationExpiresAt();
+    const remain = Math.max(0, end - Date.now());
+    const m = Math.floor(remain / 60000);
+    const s = Math.floor((remain % 60000) / 1000);
+    out.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+
+    if (remain <= 0) {
+      clearInterval(reserveTimerHandle2);
+      clearReservationHold();
+      renderReservationExpired(); // fall back when time ends
+    }
+  }
+  tick();
+  reserveTimerHandle2 = setInterval(tick, 1000);
+}
+// Define once, globally
+if (!window.sendVipInvite) {
+  window.sendVipInvite = async function sendVipInvite(email, websitePot = '', ts = Date.now()) {
+    const res = await fetch('/wp-json/vip/v1/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email,
+        template: 'vip',
+        website: websitePot, // honeypot
+        ts
+      })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data?.message || 'Failed to send invite');
+    return data;
+  };
+}
+
+
+/* ===== Active reservation (post-email) view ===== */
+function renderActiveReservationCountdown() {
+  const slot = document.getElementById('vipActionSlot');
+  if (!slot) return;
+
+  // hide title/copy above the card
+  const titleEl = document.querySelector('#vipModal h2');
+  const copyEl  = document.getElementById('vipCopy');
+  if (titleEl) titleEl.style.display = 'none';
+  if (copyEl)  copyEl.style.display  = 'none';
+
+  const email = (localStorage.getItem('vip_email') || '').trim();
+  const ans   = (() => { try { return JSON.parse(localStorage.getItem('vip_answers')||'{}'); } catch(_) { return {}; } })();
+
+  // tiny personalization line based on saved answers (optional)
+  const camTxt  = ans.mode && ans.mode.startsWith('1-on-1') ? 'with camera' : 'without camera';
+  const prefMap = { Women:'women', Men:'men', Trans:'trans', Couples:'couples', Everyone:'everyone' };
+  const prefTxt = prefMap[ans.pref] || 'everyone';
+
+  slot.innerHTML = `
+    <div style="
+      display:grid;gap:12px;
+      background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));
+      border:1px solid rgba(255,255,255,.18);
+      border-radius:16px;
+      padding:14px;
+      color:#e5e7eb;
+    ">
+      <div style="
+        font-size:17px;font-weight:900;
+        background:linear-gradient(90deg,#fff,#f6ad55);
+        -webkit-background-clip:text;background-clip:text;color:transparent;
+        text-align:center;
+      ">🎟️ Invitation reserved for you</div>
+
+      <div style="color:#cbd5e1;text-align:center;">For a member <strong>${camTxt}</strong> seeking <strong>${prefTxt}</strong> matches.</div>
+
+      <div style="display:flex;justify-content:center;">
+        <div style="
+          font-variant-numeric:tabular-nums;
+          font-size:24px;font-weight:900;letter-spacing:.5px;
+          padding:4px 12px;border-radius:12px;
+          background:rgba(99,102,241,.12);
+          border:1px solid rgba(99,102,241,.25);
+        ">
+          <span id="reserveCountdown">--:--</span>
+        </div>
+      </div>
+
+      <div style="color:#cbd5e1;text-align:center;">
+        We sent a secure invite to <strong>${email ? email : 'your email'}</strong>.
+      </div>
+
+      <div style="display:grid;gap:10px;margin-top:4px;">
+        <button class="signup-btn" id="btnOpenMail" type="button">Open my email app</button>
+        <button class="btn" id="btnDidntGet" type="button" style="
+          min-height:44px;border-radius:12px;border:1px solid rgba(255,255,255,.16);
+          background:rgba(255,255,255,.06);color:#e5e7eb;font-weight:700;cursor:pointer;">
+          Didn’t get it?
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('btnOpenMail')?.addEventListener('click', openMyMailbox);
+  document.getElementById('btnDidntGet')?.addEventListener('click', renderResendHelp);
+  
+
+  // kick the persisted countdown
+  startReserveCountdownFromStorage();
+}
+
+/* “Didn’t get it?” helper screen */
+function renderResendHelp() {
+  const slot = document.getElementById('vipActionSlot');
+  if (!slot) return;
+
+  const email = (localStorage.getItem('vip_email') || '').trim();
+
+  slot.innerHTML = `
+    <div style="
+      display:grid;gap:14px;
+      background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));
+      border:1px solid rgba(255,255,255,.18);
+      border-radius:16px;padding:16px;color:#e5e7eb;text-align:left;">
+      <div style="font-size:18px;font-weight:900;text-align:center;">Didn’t get the email?</div>
+
+      <div style="display:grid;gap:10px;">
+        <button class="signup-btn" id="btnResend" type="button">Resend to ${email ? email : 'saved email'}</button>
+
+        <div style="display:grid;gap:8px;margin-top:6px;">
+          <label style="font-size:13px;color:#cbd5e1;">Use a different email</label>
+          <input id="newEmail" class="email-input" placeholder="Enter a different email" />
+          <button id="btnChangeEmail" class="btn" type="button" style="
+            min-height:44px;border-radius:12px;border:1px solid rgba(255,255,255,.16);
+            background:rgba(255,255,255,.06);color:#e5e7eb;font-weight:800;cursor:pointer;">
+            Send to this email
+          </button>
+        </div>
+
+        <div style="font-size:12px;color:#94a3b8;line-height:1.5;margin-top:6px;">
+          Tips:
+          <ul style="margin:6px 0 0 18px;">
+            <li>Check Spam/Junk and “All Mail”.</li>
+            <li>Search for the subject “Your VIP invitation”.</li>
+            <li>It can take up to a minute to arrive.</li>
+          </ul>
+        </div>
+
+        <button id="btnBackToCountdown" class="btn" type="button" style="
+          min-height:44px;border-radius:12px;border:1px solid rgba(255,255,255,.16);
+          background:rgba(255,255,255,.06);color:#e5e7eb;font-weight:800;cursor:pointer;">
+          ← Back
+        </button>
+      </div>
+    </div>
+  `;
+
+  // 1) Resend to saved email
+  document.getElementById('btnResend')?.addEventListener('click', async () => {
+    const to = (localStorage.getItem('vip_email') || '').trim();
+    if (!to) { alert('No email on file. Please enter a new email below.'); return; }
+  
+    try {
+      await window.sendVipInvite(to, ''); // use the same sender you wired for the main form
+      // keep/refresh the 30-min hold + state
+      if (!window.__wetroulette?.isReservationActive?.()) {
+        window.__wetroulette?.setReservationHold?.(30);
+      }
+      if (typeof markInviteSent === 'function') markInviteSent(true);
+      else { try { localStorage.setItem('vip_invite_sent','1'); } catch(_){} }
+  
+      alert('Invite re-sent. Check your inbox.');
+      window.__wetroulette?.renderActiveReservationCountdown?.();
+    } catch (err) {
+      console.error(err);
+      alert('Could not resend. Please try again in a minute.');
+    }
+  });
+  
+  // 2) Send to different email
+  document.getElementById('btnChangeEmail')?.addEventListener('click', async () => {
+    const newEmail = document.getElementById('newEmail')?.value?.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
+      alert('Enter a valid email.');
+      return;
+    }
+  
+    try {
+      await window.sendVipInvite(newEmail, ''); // same sender
+      try { localStorage.setItem('vip_email', newEmail); } catch(_){}
+      if (!window.__wetroulette?.isReservationActive?.()) {
+        window.__wetroulette?.setReservationHold?.(30);
+      }
+      if (typeof markInviteSent === 'function') markInviteSent(true);
+      else { try { localStorage.setItem('vip_invite_sent','1'); } catch(_){} }
+  
+      alert('Invite sent to your new email.');
+      window.__wetroulette?.renderActiveReservationCountdown?.();
+    } catch (err) {
+      console.error(err);
+      alert('Could not send to the new email. Please try again.');
+    }
+  });
+
+  document.getElementById('btnBackToCountdown')?.addEventListener('click', renderActiveReservationCountdown);
+}
+
+/* Simple stub – replace later with your ESP API call */
+function sendInviteEmail(email) {
+  const answers = (() => { try { return JSON.parse(localStorage.getItem('vip_answers')||'{}'); } catch(_) { return {}; } })();
+  console.log('[sendInviteEmail] to=', email, 'answers=', answers);
+}
+// Make internal helpers callable from the global handler
+window.__wetroulette = Object.assign(window.__wetroulette || {}, {
+  setReservationHold,
+  sendInviteEmail,
+  renderActiveReservationCountdown
+});
+
+/* When time runs out, revert flow */
+function renderReservationExpired() {
+    const slot = document.getElementById('vipActionSlot');
+    if (!slot) return;
+  
+    // Clear sent flag & hold
+    markInviteSent(false);
+    clearReservationHold();
+  
+    // restore title/copy
+    const title = document.querySelector('#vipModal h2');
+    const p     = document.getElementById('vipCopy');
+    if (title) { title.style.display=''; title.textContent='VIP Reservation Expired'; }
+    if (p) {
+      p.style.display='';
+      p.innerHTML = 'Your 30-minute hold ended. You can try again right now.';
+    }
+  
+    slot.innerHTML = `
+      <button id="claimBtn" class="claim-btn" type="button">Claim your invitation</button>
+    `;
+    requestAnimationFrame(() => document.getElementById('claimBtn')?.classList.add('show'));
+    document.getElementById('claimBtn')?.addEventListener('click', onClaimInvitation);
+  }
+  
+
+  function renderHoldScreen() {
+    const slot = document.getElementById('vipActionSlot');
+    if (!slot) return;
+  
+    // Hide the heading + copy above the card for this screen
+    const titleEl = document.querySelector('#vipModal h2');
+    const copyEl  = document.getElementById('vipCopy');
+    if (titleEl) titleEl.style.display = 'none';
+    if (copyEl)  copyEl.style.display  = 'none';
+  
+    // Same styling as your reservation card, but NO countdown and NO email form
+    slot.innerHTML = `
+      <div style="
+        display:grid;gap:12px;
+        background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));
+        border:1px solid rgba(255,255,255,.18);
+        border-radius:16px;
+        padding:14px;
+        color:#e5e7eb;
+        text-align:center;
+      ">
+        <div style="
+          font-size:17px;font-weight:900;
+          background:linear-gradient(90deg,#fff,#f6ad55);
+          -webkit-background-clip:text;background-clip:text;color:transparent;
+        ">🎟️ Invitation reserved for you</div>
+  
+        <div style="color:#cbd5e1;">
+          Your VIP invitation is held based on your answers. You’re all set — continue when ready.
+        </div>
+  
+        <button class="signup-btn" type="button" id="closeVipOk">Okay</button>
+      </div>
+    `;
+  
+    document.getElementById('closeVipOk')?.addEventListener('click', closeVipModal);
+  }
+  
+  
+  
+  function renderInvitationSent() {
+    const slot = document.getElementById('vipActionSlot');
+    if (!slot) return;
+    const p = document.getElementById('vipCopy');
+    if (p) p.innerHTML = '🎉 Invitation sent! Check your email for a secure invite link.';
+  
+    clearInterval(reserveTimerHandle);
+    slot.innerHTML = `
+      <div style="display:grid;gap:12px;text-align:center;color:#e5e7eb;">
+        <div style="font-size:20px;font-weight:900;">✅ Invitation sent</div>
+        <div style="color:#cbd5e1;">
+          Open your inbox and <strong>claim your reserved spot</strong> on the VIP site.<br/>
+          The hold lasts for about 30 minutes.
+        </div>
+        <button class="signup-btn" type="button" id="closeVipOk">Ok, I'll check</button>
+      </div>
+    `;
+    document.getElementById('closeVipOk')?.addEventListener('click', closeVipModal);
+  }
+  // Keep correct on resize/orientation
+  window.addEventListener('resize', applyCrop);
+  window.addEventListener('orientationchange', ()=> setTimeout(applyCrop, 120));
+  document.addEventListener('DOMContentLoaded', applyCrop);
+
+  // Kick off the first load with initial transition
+  // Don't run anything on DOMContentLoaded anymore
+  let appInitialized = false;
+
+  function initializeOriginalApp() {
+    if (appInitialized) return; // Prevent double initialization
+    appInitialized = true;
+    
+    console.log('Starting original app...');
+    
+    // All your original initialization code:
+    if (onlineSpan){ onlineSpan.textContent = onlineCurrent.toLocaleString(); scheduleNext(); }
+  
+  
+    setCamState('off');
+    document.querySelector('.cam-retry')?.addEventListener('click', (e)=>{ e.stopPropagation(); requestLocalCamera(); });
+    document.querySelector('.cam-close')?.addEventListener('click', (e)=>{ e.stopPropagation(); stopLocalCamera(); });
+    document.getElementById('localCam')?.addEventListener('click', (e)=>{ e.stopPropagation(); if (!localStream) requestLocalCamera(); });
+  
+    // Buttons with transition overlay
+    let nextClickCount = 0;
+    document.querySelector('.control-btn.next')?.addEventListener('click', ()=>{ 
+      nextClickCount++; 
+      if (nextClickCount % 10 === 0) showCooldownModal();
+      loadNext(); 
+    });
+    
+    document.querySelector('.control-btn.end-chat')?.addEventListener('click', handleEndChat);
+    document.getElementById('spinAgainBtn')?.addEventListener('click', handleSpinAgain);
+    bindPeekOnce();
+
+
+  }
+  
+  // Only set up the start button, nothing else
+  document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded - start screen only');
+    
+    const startBtn = document.getElementById('startBtn');
+    const startScreen = document.getElementById('startScreen');
+    const container = document.querySelector('.video-chat-container');
+    
+    if (startBtn) {
+      console.log('Adding click listener to start button');
+      startBtn.addEventListener('click', function(e) {
+        console.log('BUTTON CLICKED!');
+        
+        // Hide start screen
+        if (startScreen) startScreen.style.display = 'none';
+        if (container) container.classList.remove('loading');
+        
+        // Start the app
+        setTimeout(initializeOriginalApp, 100);
+      });
+    } else {
+      console.log('Start button not found!');
+    }
+  });
+
+  function handleClickOutside(e){
+    if (!isDropdownOpen) return;
+    const dd  = document.getElementById('genderDropdown');
+    const btn = document.getElementById('genderFilterBtn');
+    if (dd && btn && !dd.contains(e.target) && !btn.contains(e.target)){
+      toggleGenderDropdown();
+    }
+  }
+  // Sound VIP modal trigger
+  document.getElementById('mutedSoundIcon')?.addEventListener('click', showSoundVipModal);
+    
+      // seed online drift
+      if (onlineSpan){ onlineSpan.textContent = onlineCurrent.toLocaleString(); scheduleNext(); }
+  
+      // Init UI bindings
+      document.getElementById('genderFilterBtn')?.addEventListener('click', (e)=>{ e.preventDefault(); e.stopPropagation(); toggleGenderDropdown(); });
+      document.querySelectorAll('#genderDropdown .dropdown-item').forEach(item=>{
+        item.addEventListener('click', (e)=>{ e.preventDefault(); e.stopPropagation(); handleGenderSelect(item.dataset.gender); });
+      });
+      document.addEventListener('click', handleClickOutside);
+  
+      setCamState('off');
+      document.querySelector('.cam-retry')?.addEventListener('click', (e)=>{ e.stopPropagation(); requestLocalCamera(); });
+      document.querySelector('.cam-close')?.addEventListener('click', (e)=>{ e.stopPropagation(); stopLocalCamera(); });
+      document.getElementById('localCam')?.addEventListener('click', (e)=>{ e.stopPropagation(); if (!localStream) requestLocalCamera(); });
+  
+      // Buttons with transition overlay
+      let nextClickCount = 0;
+      document.querySelector('.control-btn.next')?.addEventListener('click', ()=>{ 
+        nextClickCount++; 
+        if (nextClickCount % 10 === 0) showCooldownModal(); 
+        loadNext(); 
+      });
+      document.addEventListener('DOMContentLoaded', function() {
+        const clickBlocker = document.getElementById('iframeClickBlocker');
+        
+        if (clickBlocker) {
+          clickBlocker.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Get current username from active iframe
+            const currentUsername = getCurrentUsername();
+            
+            // Build custom registration URL
+            const regUrl = currentUsername 
+              ? `https://www.xcam.vip/accounts/register/?track=xcamvip&room=${currentUsername}`
+              : 'https://www.xcam.vip/accounts/register/?track=xcamvip';
+            
+            // Trigger your VIP modal (replace with your actual modal function)
+            showVipModal(); // or openVipModal() or whatever you call it
+            
+            // OR if you want direct popup instead:
+            // window.open(regUrl, '_blank');
+          });
+        }
+      });
+    
+      // Helper function to extract username
+      function getCurrentUsername() {
+        const activeIframe = document.querySelector('.partner-iframe.visible');
+        if (!activeIframe || !activeIframe.src) return null;
+        
+        const match = activeIframe.src.match(/room=([^&]+)/);
+        return match ? decodeURIComponent(match[1]) : null;
+      }
+      
+      // Wire up END CHAT button
+      document.querySelector('.control-btn.end-chat')?.addEventListener('click', handleEndChat);
+      
+      // Wire up end chat overlay button
+      document.getElementById('spinAgainBtn')?.addEventListener('click', handleSpinAgain);
+      
+      
+      // Show initial transition overlay when page loads (3.2 seconds)
+      showTransitionFor(3800);
+      loadNext();
+  })();
+  </script>
+  <script>
+  // waits until __wetroulette.renderActiveReservationCountdown exists, then flips UI
+function flipToCountdownWhenReady(tries = 60) { // ~3s max (60 * 50ms)
+  if (window.__wetroulette?.renderActiveReservationCountdown) {
+    window.__wetroulette.renderActiveReservationCountdown();
+    return;
+  }
+  if (tries > 0) setTimeout(() => flipToCountdownWhenReady(tries - 1), 50);
+}
+// waits until __wetroulette.renderActiveReservationCountdown exists, then flips UI
+function flipToCountdownWhenReady(tries = 60) { // ~3s max (60 * 50ms)
+  if (window.__wetroulette?.renderActiveReservationCountdown) {
+    window.__wetroulette.renderActiveReservationCountdown();
+    return;
+  }
+  if (tries > 0) setTimeout(() => flipToCountdownWhenReady(tries - 1), 50);
+}
+
+async function handleVipSignupReal(e){
+  const btn  = e?.currentTarget || document.getElementById('vipEmailSubmit');
+  const form = btn?.closest('.vip-email-form');
+  if (!form) return;
+
+  const input = form.querySelector('input[type="email"]');
+  const msgEl = form.querySelector('#vipEmailMsg');
+  const hp    = form.querySelector('#vipWebsitePot');
+
+  const email = (input?.value || '').trim();
+  const showMsg = t => { if (msgEl) msgEl.textContent = t; };
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    showMsg('Please enter a valid email.');
+    return;
+  }
+
+  if (btn) btn.disabled = true;
+  showMsg('Sending…');
+
+  try {
+    await sendVipInvite(email, hp?.value || '', Date.now());  // ← use shim with ts
+    showMsg('Invite sent! Check your inbox (Spam/Promotions too).');
+
+    // persist + flip
+    try { localStorage.setItem('vip_email', email); } catch(_){}
+    if (!window.__wetroulette?.isReservationActive?.()) {
+      window.__wetroulette?.setReservationHold?.(30);
+    }
+    if (typeof markInviteSent === 'function') markInviteSent(true);
+    else { try { localStorage.setItem('vip_invite_sent','1'); } catch(_){} }
+
+    // hard flip: clear action slot then render countdown
+    const slot = document.getElementById('vipActionSlot');
+    if (slot) slot.innerHTML = '';
+    window.__wetroulette?.renderActiveReservationCountdown?.();
+  } catch (err) {
+    console.error(err);
+    showMsg('Could not send email. Please try again in a minute.');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+
+
+
+  /** Render into #vipActionSlot (dynamic) */
+  window.renderEmailForm = function renderEmailForm() {
+    const slot = document.getElementById('vipActionSlot');
+    if (!slot) return;
+  
+    // Replace innerHTML to drop old listeners + markup
+    slot.innerHTML = `
+    <div class="vip-email-form">
+    <input type="email" class="email-input" placeholder="Enter your email for VIP invitation" id="vipEmailInput" />
+    <input type="text" id="vipWebsitePot" style="display:none" tabindex="-1" autocomplete="off" />
+    <input type="hidden" id="vipFormTs" />
+    <button class="signup-btn" id="vipEmailSubmit" type="button">Get VIP Access</button>
+    <div id="vipEmailMsg" style="color:#94a3b8;font-size:12px;text-align:center;margin-top:6px;"></div>
+  </div>
+    `;
+    // set client timestamp (seconds) to measure "time-to-submit"
+document.getElementById('vipFormTs')?.setAttribute('value', Math.floor(Date.now() / 1000));
+
+  
+    const btn   = slot.querySelector('#vipEmailSubmit');
+    const input = slot.querySelector('#vipEmailInput');
+  
+    // Click handler (ensure single bind)
+    btn?.addEventListener('click', handleVipSignupReal, { once: false });
+
+  
+    // Enter key submits
+    input?.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter') {
+        ev.preventDefault();
+        btn?.click();
+      }
+    });
+  };
+  
+  /** If you also have a static block on page load, bind it safely */
+  (function bindStaticIfPresent(){
+    const btn   = document.getElementById('vipEmailSubmit');
+    const input = document.getElementById('vipEmailInput');
+    const root  = btn?.closest('.vip-email-form');
+  
+    if (btn && root) {
+      // Avoid double-binding: remove any previous to be safe, then add
+      btn.replaceWith(btn.cloneNode(true));
+      const freshBtn = root.querySelector('#vipEmailSubmit');
+      freshBtn?.addEventListener('click', handleVipSignupReal);
+  
+      input?.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter') {
+          ev.preventDefault();
+          freshBtn?.click();
+        }
+      });
+      // Delegated guard: always route to the real handler
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('#vipEmailSubmit');
+  if (!btn) return;
+  e.preventDefault();
+  handleVipSignupReal(e);
+});
+
+  
+      // Ensure honeypot exists in static form too
+      if (!root.querySelector('#vipWebsitePot')) {
+        const hp = document.createElement('input');
+        hp.type = 'text'; hp.id = 'vipWebsitePot';
+        hp.style.display = 'none'; hp.tabIndex = -1; hp.autocomplete = 'off';
+        root.appendChild(hp);
+      }
+    }
+  })();
+  </script>
+  
+</body>
+</html>

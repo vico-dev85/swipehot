@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+vendor/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Claude Code internals (keep CLAUDE.md, ignore session data)
+.claude/
+
+# Build artifacts
+dist/
+build/
+*.log
+
+# WordPress uploads (if any local copies)
+uploads/
+
+# Temp files
+*.tmp
+*.bak
+analyze-api.js

@@ -36,6 +36,23 @@ fetching performer data from the affiliate API — invisible to visitors.
 7. Gender filter: Everyone / Female / Male / Trans / Couples — free, no gate
 8. All UI floats transparently over the video — no solid header bar
 
+### Core Philosophy: Retention First, Conversion Follows
+The app IS the product, not just a funnel. Users should enjoy the experience enough to
+come back — even if they don't click an affiliate link today. A user who spends 10 minutes
+swiping and returns tomorrow is more valuable than one who clicks once and never comes back.
+
+This means:
+- **The experience must be genuinely enjoyable** — not a conversion trap
+- **CTAs are present but never pushy** — visible when ready, unobtrusive when not
+- **Personalization drives return visits** — "it knows what I like" = habit formation
+- **Analytics tracks engagement depth** — not just affiliate CTR. Time on site, performers
+  viewed, return rate, session frequency, swipe patterns all matter
+- **Every session teaches the algorithm** — even non-converting sessions build the
+  personalization brain, making the next visit better
+
+Think TikTok: they don't monetize on the first swipe. They make users build a habit,
+and monetization follows naturally.
+
 ### What Drives Conversion
 No artificial gates. Users enjoy free, clear, live video. Conversion comes from wanting
 MORE of a specific performer:
@@ -982,6 +999,35 @@ Automated via Playwright.
 - Real chat functionality (roulette has no chat — that's the white label's job)
 - Email collection / invite gating (removed — direct conversion only)
 - Multiple site support in dashboard (start with single site, extract later)
+
+### Future: Agentic Automation (Phase 4+)
+Full brainstorm in `assistant/agentic-approach-brainstorm.txt`. Not building any of this
+until the core platform has real users and real data. Summary of what's worth building later:
+
+**High value, build first (after platform is live):**
+- **Pool health monitor** — adaptive refresh rates, circuit breaker, anomaly detection,
+  alert only on critical failures. (Note: basic retry/fallback is already in the backend
+  build plan — this extends it with intelligence.)
+- **User behavior analysis** — auto-generate weekly engagement reports from analytics data,
+  A/B test significance calculations, identify high-value user segments
+- **Content quality agent** — auto-score generated articles (word count, uniqueness, SEO,
+  readability), auto-approve >85, flag <70 for regeneration, learn from what ranks
+
+**Medium value, build second:**
+- **Personalization tuning** — A/B test scoring formulas, auto-adjust weights based on
+  engagement metrics, roll back if engagement drops
+- **SEO performance monitor** — track rankings, detect drops early, identify quick wins
+  (page 2 → page 1), weekly health summary
+- **Model status monitor** — daily check all models active/inactive, update pages, discover
+  trending models, archive stale ones
+
+**Build much later or never:**
+- Orchestrator/meta-agent — don't build until you have agents worth orchestrating
+- Documentation agent — low value, manual is fine at this scale
+- Full CI/CD agent — GitHub Actions is simpler and proven
+
+**Key principles:** Start simple (one agent at a time), measure ROI before building,
+Victor must be able to pause/override any agent, agents failing must never break core system.
 
 ---
 

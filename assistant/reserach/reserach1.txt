@@ -1,0 +1,363 @@
+Hey Claude Code,
+
+Before we start planning the rebuild, I want you to do something smart: **delegate the research work.**
+
+## The Research Workflow
+
+Instead of you spending hours searching the web (which would bloat our conversation), here's what we'll do:
+
+### Step 1: You Create the Research Structure (NOW)
+
+Create this folder structure in the repo:
+```
+researches/
+├── README.md                          # Overview of research process
+├── todo/                              # Research questions waiting to be done
+│   ├── 01-tiktok-video-ux.md
+│   ├── 02-adult-entertainment-ux.md
+│   ├── 03-personalization-systems.md
+│   ├── 04-video-performance.md
+│   ├── 05-similar-projects.md
+│   └── 06-seo-content-generation.md
+└── results/                           # Completed research (I'll paste here)
+    └── .gitkeep
+```
+
+### Step 2: You Write Research Prompts
+
+For each research topic, create a **detailed research prompt** that I can copy-paste to ChatGPT or Claude web.
+
+Each prompt should:
+- ✅ Be self-contained (works without context)
+- ✅ Specify exactly what to search for
+- ✅ Ask for specific, actionable findings
+- ✅ Request sources/citations
+- ✅ Define output format clearly
+
+**Example format for each file in `todo/`:**
+```markdown
+# Research: TikTok-Style Video UX
+
+## Context
+We're building a video roulette app similar to TikTok's infinite scroll. Users swipe through random live cam performers. We need to understand what makes TikTok's UX so addictive and how to apply those principles.
+
+## Research Questions
+
+### 1. Technical Implementation
+- How does TikTok's infinite scroll work technically?
+- What's their video preloading strategy? (how many ahead?)
+- How do they handle smooth transitions between videos?
+- What's the technical architecture for instant swipes?
+
+**Search queries to use:**
+- "TikTok infinite scroll implementation"
+- "TikTok video preloading architecture"
+- "TikTok clone technical tutorial"
+- "how TikTok works technically"
+
+### 2. Psychological Engagement
+- What psychological principles make "just one more swipe" so compelling?
+- How does TikTok's algorithm maximize watch time?
+- What's the dopamine loop mechanism?
+- How do they balance novelty vs personalization?
+
+**Search queries to use:**
+- "TikTok psychology addiction"
+- "infinite scroll dopamine loop"
+- "TikTok engagement psychology"
+- "why TikTok is addictive"
+
+### 3. UX Patterns & Best Practices
+- What are the specific UX patterns TikTok uses?
+- How do they handle loading states?
+- What makes the swipe gesture feel good?
+- How do they prevent jank/lag?
+
+**Search queries to use:**
+- "TikTok UX best practices"
+- "video app smooth scrolling"
+- "TikTok interaction design"
+- "TikTok UI patterns"
+
+### 4. Open Source Examples
+- Are there any open-source TikTok clones?
+- What frameworks/libraries do they use?
+- What can we learn from their code?
+
+**Search queries to use:**
+- "TikTok clone open source"
+- "TikTok clone GitHub"
+- "infinite scroll video app tutorial"
+- "TikTok alternative source code"
+
+## Output Format
+
+Please provide your findings in this format:
+
+### Finding 1: [Specific insight]
+**Source:** [URL or article title]
+**Key points:**
+- [Specific actionable point]
+- [Specific actionable point]
+**Recommendation for our project:**
+- [How we should apply this]
+
+### Finding 2: [Specific insight]
+[Same format]
+
+... (continue for all findings)
+
+## Summary
+[2-3 paragraph summary of the most important insights]
+
+## Actionable Recommendations
+1. [Specific thing we should implement]
+2. [Specific thing we should avoid]
+3. [Pattern/library/approach we should use]
+
+---
+
+**Estimated research time:** 30-45 minutes
+**Priority:** High (affects core UX architecture)
+```
+
+---
+
+### Step 3: I Run the Research
+
+I'll take each prompt from `todo/`, run it through ChatGPT or Claude web, and paste the results into `results/` with the same filename.
+
+For example:
+- `researches/todo/01-tiktok-video-ux.md` → ChatGPT
+- ChatGPT does the research
+- I paste results into `researches/results/01-tiktok-video-ux.md`
+
+### Step 4: You Review Results & Apply Insights
+
+Once all research is done, you:
+1. Read all the results files
+2. Extract actionable insights
+3. Apply them to your architecture planning
+4. Reference specific findings in CLAUDE.md
+5. Use insights to inform technical decisions
+
+---
+
+## What You Should Create
+
+### File: `researches/README.md`
+```markdown
+# Research Process
+
+## Overview
+This folder contains research questions and results that inform the xcam.vip rebuild.
+
+## Workflow
+1. Claude Code creates research prompts in `todo/`
+2. Victor runs prompts through ChatGPT/Claude web
+3. Results are pasted into `results/`
+4. Claude Code reviews results and applies insights
+
+## Research Topics
+- [x] TikTok-style video UX
+- [x] Adult entertainment UX patterns
+- [x] Personalization systems
+- [x] Video performance optimization
+- [x] Similar open-source projects
+- [x] SEO content generation
+
+## How to Use Results
+All findings are incorporated into CLAUDE.md and the implementation plan.
+Specific citations are referenced where relevant.
+```
+
+### Files in `todo/` (6 research prompts)
+
+Create 6 detailed research prompt files:
+
+1. **01-tiktok-video-ux.md**
+   - Technical implementation
+   - Psychological engagement
+   - UX patterns
+   - Open source examples
+
+2. **02-adult-entertainment-ux.md**
+   - Successful cam site patterns
+   - Conversion optimization
+   - Mobile vs desktop behavior
+   - Psychology of adult content consumption
+   - Trust and safety signals
+
+3. **03-personalization-systems.md**
+   - Recommendation algorithm types
+   - Cold start problem solutions
+   - Tag-based vs collaborative filtering
+   - TikTok/Netflix For You algorithm
+   - Minimum data needed for personalization
+
+4. **04-video-performance.md**
+   - Iframe optimization techniques
+   - Video preloading strategies
+   - Low bandwidth handling
+   - Lazy loading vs eager loading
+   - Modern video codecs
+
+5. **05-similar-projects.md**
+   - Open source video roulette apps
+   - Omegle alternatives on GitHub
+   - Random video chat implementations
+   - React/Next.js video components
+   - What frameworks are popular
+
+6. **06-seo-content-generation.md**
+   - Programmatic SEO best practices 2026
+   - AI content for SEO (what works/doesn't)
+   - Thin content penalty avoidance
+   - Affiliate site strategies
+   - Internal linking patterns
+
+---
+
+## Format Requirements
+
+**Each research prompt must have:**
+- ✅ Clear context (why we need this)
+- ✅ Specific questions (not vague)
+- ✅ Suggested search queries (exact strings to search)
+- ✅ Requested output format (structured findings)
+- ✅ Priority level (high/medium/low)
+- ✅ Estimated time (so I know what to expect)
+
+**Make the prompts:**
+- Self-contained (work without this conversation's context)
+- Copy-paste ready (I just copy the whole file)
+- Specific enough to get actionable results
+- Focused (not trying to research everything at once)
+
+---
+
+## Why This Workflow is Better
+
+**For you (Claude Code):**
+- ✅ Clean context (no research clutter)
+- ✅ Focus on architecture (your strength)
+- ✅ Get curated insights (not raw search results)
+- ✅ Reference research in planning
+
+**For me (Victor):**
+- ✅ Control over research depth
+- ✅ Can use ChatGPT + Claude web in parallel
+- ✅ Organized results in repo
+- ✅ Can revisit research later
+
+**For the project:**
+- ✅ Research is documented and version-controlled
+- ✅ Findings are reusable
+- ✅ Clear paper trail of decisions
+- ✅ Can update research as trends change
+
+---
+
+## Next Steps
+
+1. **Create the folder structure**
+   - `researches/todo/`
+   - `researches/results/`
+   - `researches/README.md`
+
+2. **Write the 6 research prompts**
+   - Each as a separate markdown file
+   - Following the format I showed above
+   - Copy-paste ready for ChatGPT/Claude web
+
+3. **Commit to git**
+   - So I can access the prompts
+   - Title: "Add research prompt structure"
+
+4. **Notify me**
+   - Tell me the prompts are ready
+   - I'll start running them through ChatGPT/Claude web
+   - I'll paste results back into `results/`
+
+5. **You wait for results**
+   - Once I've completed all research
+   - You review the results
+   - Then you proceed with Phase 0B (agentic thinking)
+
+---
+
+## Priority Order
+
+If I can only do some research due to time, which is most critical?
+
+**Rank them:**
+1. [Priority 1] - Critical for MVP
+2. [Priority 2] - Important for MVP
+3. [Priority 3] - Nice to have for MVP
+4. [Priority 4] - Can wait for Phase 2
+5. [Priority 5] - Can wait for Phase 2
+6. [Priority 6] - Can wait for Phase 2
+
+This helps me know where to focus if we're time-constrained.
+
+---
+
+Ready to create the research structure and prompts? This will take you maybe 30-45 minutes to write good prompts, but it'll save hours of your context being cluttered with web searches.
+
+Let's do this!
+```
+
+---
+
+## **Why This Workflow is GENIUS**
+
+### **Problems with Claude Code doing research:**
+❌ Context bloat (thousands of tokens used)
+❌ Slower response times
+❌ Research buried in conversation history
+❌ Can't parallelize (one search at a time)
+❌ Limited web search capabilities
+
+### **Benefits of your approach:**
+✅ Clean separation of concerns
+✅ ChatGPT/Claude web = better at research
+✅ Can run multiple researches in parallel
+✅ Results stored in repo (version controlled)
+✅ Can revisit/update research later
+✅ Clear documentation trail
+✅ Claude Code stays focused on architecture
+
+---
+
+## **What Happens Next**
+```
+Step 1: Claude Code creates research structure
+├── researches/todo/ (6 prompt files)
+├── researches/results/ (empty, waiting for you)
+└── researches/README.md (instructions)
+
+Step 2: You copy prompts to ChatGPT/Claude web
+├── Open ChatGPT
+├── Paste: researches/todo/01-tiktok-video-ux.md
+├── ChatGPT researches for 30 mins
+├── Copy results to researches/results/01-tiktok-video-ux.md
+└── Repeat for all 6 topics
+
+Step 3: Claude Code reviews results
+├── Reads all 6 result files
+├── Extracts actionable insights
+├── Applies to architecture planning
+└── References in CLAUDE.md
+
+Step 4: Continue with planning
+└── Phase 0B: Agentic strategy (informed by research)
+```
+
+---
+
+## **Timeline**
+```
+Claude Code: 45 mins to write research prompts
+You: 3-4 hours to run all researches (can parallelize)
+Claude Code: 1 hour to review results
+Total: Same research time, but cleaner process

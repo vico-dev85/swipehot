@@ -1,6 +1,9 @@
 import { getSessionId, incrementCount } from "./session";
 import { getAlpha } from "./brain";
 
+// API base URL — empty string means same-origin (/api/...), set via env for external API (Railway etc.)
+const API_BASE = import.meta.env.VITE_API_URL || "";
+
 export interface PerformerData {
   username: string;
   display_name: string;
@@ -49,7 +52,7 @@ export async function fetchNextPerformer(
     params.set("alpha", alpha.toFixed(2));
   }
 
-  const res = await fetch(`/api/pool/next?${params}`);
+  const res = await fetch(`${API_BASE}/api/pool/next?${params}`);
   if (!res.ok) {
     throw new Error(`Pool error: ${res.status}`);
   }
@@ -59,7 +62,7 @@ export async function fetchNextPerformer(
 }
 
 export async function fetchPoolStats(): Promise<PoolStats> {
-  const res = await fetch("/api/pool/stats");
+  const res = await fetch(`${API_BASE}/api/pool/stats`);
   if (!res.ok) {
     throw new Error(`Stats error: ${res.status}`);
   }
@@ -80,7 +83,7 @@ export interface AppConfig {
 }
 
 export async function fetchConfig(): Promise<AppConfig> {
-  const res = await fetch("/api/config");
+  const res = await fetch(`${API_BASE}/api/config`);
   if (!res.ok) {
     throw new Error(`Config error: ${res.status}`);
   }

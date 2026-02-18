@@ -38,11 +38,13 @@ function buildEmbedUrl(performer: CachedPerformer): string {
  */
 function buildRoomUrl(performer: CachedPerformer, sessionId: string): string {
   const domain = config.whitelabelDomain;
-  const url = new URL(`https://${domain}/in/`);
-  url.searchParams.set('tour', config.affiliate.tour);
+  const uname = encodeURIComponent(performer.username);
+  const url = new URL(`https://${domain}/${uname}/`);
   url.searchParams.set('campaign', config.affiliate.campaign);
+  url.searchParams.set('tour', config.affiliate.tour);
   url.searchParams.set('track', config.affiliate.track);
   url.searchParams.set('room', performer.username);
+  url.searchParams.set('disable_sound', '0');
   // sid = unique click ID for postback conversion tracking
   url.searchParams.set('sid', `${sessionId}_${performer.username}`);
   return url.toString();

@@ -41,10 +41,13 @@ const ThumbnailOverlay = ({ imageUrl, visible }: ThumbnailOverlayProps) => {
               loaded ? "opacity-100" : "opacity-0"
             }`}
           />
-          {/* Subtle loading shimmer while image loads */}
-          {!loaded && (
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-foreground/5 to-transparent animate-shimmer" />
-          )}
+          {/* Blur overlay + connecting indicator */}
+          <div className="absolute inset-0 backdrop-blur-md bg-black/20" />
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+            {/* Pulsing ring spinner */}
+            <div className="w-10 h-10 rounded-full border-2 border-white/20 border-t-white/80 animate-spin" />
+            <span className="text-[12px] text-white/70 font-medium tracking-wide">Connecting live stream...</span>
+          </div>
         </motion.div>
       )}
     </AnimatePresence>

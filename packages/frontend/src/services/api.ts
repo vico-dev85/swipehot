@@ -10,6 +10,8 @@ export interface PerformerData {
   gender: "f" | "m" | "t" | "c";
   age: number | null;
   num_users: number;
+  country: string;
+  spoken_languages: string;
   tags: string[];
   image_url: string;
   embed_url: string;
@@ -52,7 +54,7 @@ export async function fetchNextPerformer(
     params.set("alpha", alpha.toFixed(2));
   }
 
-  const res = await fetch(`${API_BASE}/api/pool/next?${params}`);
+  const res = await fetch(`${API_BASE}/api/pool-next.php?${params}`);
   if (!res.ok) {
     throw new Error(`Pool error: ${res.status}`);
   }
@@ -62,7 +64,7 @@ export async function fetchNextPerformer(
 }
 
 export async function fetchPoolStats(): Promise<PoolStats> {
-  const res = await fetch(`${API_BASE}/api/pool/stats`);
+  const res = await fetch(`${API_BASE}/api/pool-stats.php`);
   if (!res.ok) {
     throw new Error(`Stats error: ${res.status}`);
   }
@@ -83,7 +85,7 @@ export interface AppConfig {
 }
 
 export async function fetchConfig(): Promise<AppConfig> {
-  const res = await fetch(`${API_BASE}/api/config`);
+  const res = await fetch(`${API_BASE}/api/config.php`);
   if (!res.ok) {
     throw new Error(`Config error: ${res.status}`);
   }

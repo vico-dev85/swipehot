@@ -111,13 +111,14 @@ sites and ad copy will be managed through the admin dashboard.
 
 ### Navigation & Gesture Specs (from UX research)
 - **Mobile** (primary): Swipe up = next, swipe down = previous. Buttons also visible.
-- **Desktop**: NEXT button, keyboard shortcuts possible later.
+- **Desktop**: NEXT button (bottom-right corner), keyboard shortcuts possible later. Stream in 16:9 aspect ratio container, max `min(96vw, calc(90vh * 16/9), 1500px)`. All UI overlaid on stream (no external header/footer).
 - **Swipe threshold:** ~20% of screen height OR velocity ~2000 px/s (fast flick)
 - **Swipe animation:** 300-400ms, spring physics (stiffness: 300, damping: 30)
 - **Style:** Vertical slide (old video slides out, new slides in) — NOT crossfade
 - **Sub-threshold swipe:** Rubber-band snap-back with subtle haptic feedback
 - **Double-tap:** Like/heart — appears at tap coordinates, 800ms spring scale animation
 - **Haptic feedback:** Short vibration on swipe complete, snap-back, and double-tap like
+- **UI sound effects:** Web Audio API synthesized sounds (no audio files) — soft whoosh on swipe, pop on like, click on filter change. Very quiet, subtle feedback. See `services/sounds.ts`
 - **Content preloading:** Next 1-2 streams always pre-buffered while current plays
 
 ### Like/Heart Engagement Signal
@@ -142,12 +143,12 @@ Falls back to realistic estimation if real count temporarily unavailable.
 |---|---|
 | Campaign | `roGHG` |
 | Tour | `9oGW` |
-| Track | `wetroulette` |
-| Embed pattern | `https://chaturbate.com/embed/{username}/?campaign=roGHG&tour=9oGW&track=wetroulette&room={username}&disable_sound=1&embed_video_only=1&join_overlay=1&mobileRedirect=auto` |
-| Registration | `https://www.xcam.vip/accounts/register/?track=xcamvip&room={username}` |
-| Room direct (CTA) | `https://chaturbate.com/in/?tour=9oGW&campaign=roGHG&track=wetroulette&room={username}` |
+| Track | `xcamvip-roulette` |
+| Embed pattern | `https://www.xcam.vip/embed/{username}/?campaign=roGHG&tour=9oGW&track=xcamvip-roulette&disable_sound=1&embed_video_only=1&mobileRedirect=auto&sid={session_id}_{username}` |
+| Registration | `https://www.xcam.vip/accounts/register/?track=xcamvip-roulette&room={username}&sid={session_id}_{username}` |
+| Room direct (CTA) | `https://chaturbate.com/in/?tour=9oGW&campaign=roGHG&track=xcamvip-roulette&room={username}` |
 
-**IMPORTANT:** The API's `iframe_embed` field contains `/in/` URLs which are **302 redirects** — they do NOT work as iframe `src`. Always use `/embed/{username}/` for embeds. Use `/in/` only for CTA click-through links. Currently using `chaturbate.com` directly because `www.xcam.vip` (white label) has SSL issues — switch back when SSL is fixed. |
+**IMPORTANT:** The API's `iframe_embed` field contains `/in/` URLs which are **302 redirects** — they do NOT work as iframe `src`. Always use `/embed/{username}/` for embeds. Use `/in/` only for CTA click-through links. Embeds use the white label domain (`www.xcam.vip`) — no Chaturbate watermark, resistant to ad blockers.
 
 ---
 
@@ -204,26 +205,54 @@ GET https://chaturbate.com/api/public/affiliates/onlinerooms/
 
 ---
 
+## Production PHP API
+
+The live site uses a lightweight PHP API layer (no Node.js process needed). PHP files live in `packages/frontend/public/api/` and deploy to each domain's web root.
+
+### PHP API Files
+| File | Purpose |
+|---|---|
+| `_config.php` | Shared config — affiliate IDs, MySQL creds, CORS, cache dir. **Domain-specific — only file to edit per domain.** |
+| `_db.php` | MySQL connection helper (PDO) + auto-creates tables on first request |
+| `_pool.php` | Pool fetching from CB API, file caching (90s TTL), tag normalization, quality scoring, seen-set, personalized selection |
+| `pool-next.php` | `GET /api/pool-next.php` — returns next unseen performer with personalized ranking |
+| `events.php` | `POST /api/events.php` — logs analytics events to MySQL, upserts daily_visitors |
+| `stats.php` | `GET /api/stats.php?key=xxx` — returns analytics summary (views, clicks, CTR, daily) |
+| `postback.php` | `GET /api/postback.php` — receives Chaturbate conversion postbacks |
+| `config.php` | `GET /api/config.php` — returns public frontend config (CTA text, A/B tests) |
+
+### Key Production Details
+- **Seen-set**: File-based per session (500 cap, trims to 400, 2-hour TTL)
+- **Pool exhaustion**: When all performers seen, force-deletes cache and re-fetches from CB API
+- **Synthetic tags**: Age buckets (age_18_22, age_23_30, age_31_40, age_41_plus) and country codes (country_co, etc.) injected alongside content tags
+- **Selection algorithm**: 30% random exploration, 70% blended scoring (alpha * personal + (1-alpha) * popularity), weighted random from top 25%
+- **Multi-domain**: Each domain gets its own `_config.php` with separate DB, cache dir, track ID. Same code otherwise. See `docs/multi-domain-setup.md`
+
+---
+
 ## Technology Stack
 
 | Layer | Technology | Why |
 |---|---|---|
 | **Frontend (roulette)** | React SPA (Vite + TypeScript + Tailwind + Framer Motion) | Lovable prototype had working spring physics, roulette is behind age gate so SEO irrelevant |
-| **Backend API** | Node.js + Fastify (TypeScript) | Fast, schema validation, modern async, shared language with content engine |
-| **Database** | MySQL | Already running on server, sufficient for all needs |
-| **Cache** | Redis | Pool data, sessions, config — survives process restarts |
-| **Scheduled Jobs** | node-cron (in-process) | Pool refresh every 60s, daily status checks |
-| **Process Manager** | PM2 | Auto-restart, clustering, log management, zero-downtime deploys |
-| **Web Server** | nginx | Reverse proxy to API, serves static files and pre-rendered content pages |
+| **Production API** | PHP 7.4+ (direct on FastPanel) | Simple deployment — PHP files in web root, no Node process needed |
+| **Dev API** | Node.js + Fastify (TypeScript) | Local dev server with Redis/memory fallback |
+| **Database** | MySQL | Events, stats, config — separate DB per domain |
+| **Cache** | File-based (PHP `sys_get_temp_dir()`) | Pool data cached as JSON files with 90s TTL |
+| **Process Manager** | PM2 | Auto-restart for Fastify dev server |
+| **Web Server** | nginx + FastPanel | Serves static files, PHP via php-fpm, SSL |
 | **Dashboard** | React SPA (Vite + TypeScript) | Lightweight admin panel, talks to API, behind auth |
 | **Content Engine** | TypeScript CLI (same monorepo) | Generates content via Claude API, renders HTML, shares types with API |
 
-### Server Requirements
-- Node.js 20+ LTS
+### Server Requirements (Production)
+- PHP 7.4+ with curl, pdo_mysql extensions
 - MySQL 8+
-- Redis 7+
-- nginx
-- PM2 (`npm install -g pm2`)
+- nginx + FastPanel (or cPanel)
+- SSL certificate (Let's Encrypt)
+
+### Server Requirements (Local Dev)
+- Node.js 20+ LTS
+- No Redis or MySQL required (both have fallbacks)
 
 ---
 
@@ -261,8 +290,9 @@ xcamvip/
 │   │       │   ├── api.ts           ← fetchNextPerformer, fetchPoolStats, fetchConfig
 │   │       │   ├── session.ts       ← Session ID (32-char hex), visitor ID, session rotation
 │   │       │   ├── iframe-manager.ts ← Dual iframe system (preload, crossfade, center-crop, memory cleanup)
-│   │       │   ├── brain.ts         ← Client-side personalization (30-dim tag vector, localStorage)
+│   │       │   ├── brain.ts         ← Client-side personalization (30-dim tag vector, age/country synthetic tags, localStorage)
 │   │       │   ├── tracker.ts       ← EventTracker (batch queue, flushes every 30s or on unload)
+│   │       │   ├── sounds.ts        ← UI sound effects (Web Audio API — swipe whoosh, like pop, filter click)
 │   │       │   ├── ab.ts            ← A/B test variant assignment + significance calculator
 │   │       │   └── cta-timing.ts    ← Engagement-based CTA progression (6 phases)
 │   │       └── lib/
@@ -339,6 +369,10 @@ xcamvip/
 ├── database/
 │   └── migrations/                 ← SQL migration files (versioned)
 │
+├── docs/
+│   ├── brain-personalization.md    ← how the personalization brain works
+│   └── multi-domain-setup.md      ← step-by-step guide for deploying on new domains
+│
 ├── reference/                      ← original files for comparison only
 │   ├── current-code.txt
 │   ├── xcam-cached-pool.php
@@ -394,24 +428,31 @@ of what they like. Same principle as TikTok's recommendation engine but for live
 - Collaborative filtering when enough data exists ("users who liked X also liked Y")
 - MySQL handles this fine up to hundreds of thousands of rows
 
-### Tag Normalization (Required for Phase 1)
-Raw tags are inconsistent. Need a synonym map (~30-40 groups) in `packages/shared/src/tags.ts`:
+### Tag Normalization
+Raw tags are inconsistent. Synonym map (~30 groups) in `_pool.php` `$TAG_SYNONYMS` and `brain.ts`:
 ```
-body_large_breasts: [bigboobs, bigtits, bigbreasts, hugetits]
-body_petite: [petite, skinny, slim, thin, tiny]
-ethnicity_asian: [asian, japanese, korean, chinese, thai]
-ethnicity_latina: [latina, latin, colombian, mexican]
+bigboobs: [bigboobs, bigtits, bigbreasts, hugetits, busty]
+asian: [asian, japanese, korean, chinese, thai, filipina]
+latina: [latina, latin, colombian, mexican, brazilian, spanish]
 ```
 This ensures watching a `bigtits` performer also boosts `bigboobs` preference.
 
-### Backend Scoring (in pool-matcher.ts)
+### Synthetic Tags (Age & Country)
+Both client brain and server pool add synthetic tags from structured data:
+- **Age buckets**: `age_18_22`, `age_23_30`, `age_31_40`, `age_41_plus` (only valid ages 18-69)
+- **Country codes**: `country_co`, `country_ro`, `country_us`, etc. (only known 2-letter ISO codes)
+- Weighted at 0.7x normal tag weight (implicit signals, not explicit content tags)
+- Validated against known-good values (rejects fake ages like 99, joke locations like "my room")
+
+### Backend Scoring (in `_pool.php` `selectPerformer()`)
 ```
-score = tagOverlapScore      (how many preferred tags match)
-      + popularityBonus      (num_users normalized)
-      + freshnessBonus       (not shown recently)
-      - skipPenalty           (tags from quickly-skipped rooms)
+blended = alpha * personalScore + (1 - alpha) * popularityScore
 ```
-Pick from top 25% by score with some randomness (avoid being 100% predictable).
+- `personalScore`: tag overlap with user's `prefer_tags` (position-weighted)
+- `popularityScore`: `quality_score` normalized to 0-100 (log10 viewers + HD bonus + freshness)
+- `alpha`: starts at 0, ramps to 0.85 over 20 swipes
+- 30% exploration: random pick from full unseen pool (prevents filter bubble)
+- 70% exploitation: weighted random from top 25% by blended score
 
 ### What Makes It Work
 - **Bigger pools** — need 400+ rooms per pool for enough variety
@@ -423,27 +464,30 @@ Pick from top 25% by score with some randomness (avoid being 100% predictable).
 
 ## Backend API Architecture
 
-### Pool System (Fastify + Redis)
-- Fetch from Chaturbate API every 60s via node-cron
-- 5 pools: general(400+), female(240+), male(160+), trans(140+), couple(160+)
-- Quality weighting on fetch (top quartile by viewers)
-- Retry with random offsets on underfill (up to 4 attempts)
-- Top-up from general pool if a gender pool is thin
-- Session-based exclusion to prevent repeats (Redis sets per session)
-- Strict gender validation before serving
-- All pool data cached in Redis with 75s TTL
+### Production: PHP API (FastPanel)
+PHP files in `packages/frontend/public/api/` served directly by nginx + php-fpm. No Node.js process needed in production.
 
-### API Routes
+- Fetches from Chaturbate API on-demand with file cache (90s TTL)
+- 5 gender pools: all, f, m, t, c (500/500/200/200/200 limit)
+- Quality scoring: log10(viewers) * 25 + HD bonus + freshness bonus
+- Session exclusion via file-based seen-sets (500 cap, 2-hour TTL)
+- Personalized selection: blended scoring with 30% exploration
+- Pool exhaustion recovery: force-delete cache + re-fetch if all seen
+- MySQL for events/stats, file cache for pools/sessions
 
-**Public (roulette frontend):**
+### Production API Routes
 | Route | Method | Purpose |
 |---|---|---|
-| `/api/pool/next` | GET | One performer from pool. Params: `pool`, `session`, `prefer_tags` |
-| `/api/pool/stats` | GET | Real online counts per pool for frontend display |
-| `/api/config` | GET | Public frontend config (theme, CTA text, A/B variants, feature flags) |
-| `/api/events` | POST | Log behavioral/analytics event |
+| `/api/pool-next.php` | GET | Next unseen performer. Params: `session_id`, `gender`, `prefer_tags`, `alpha` |
+| `/api/events.php` | POST | Log analytics events + upsert daily_visitors |
+| `/api/stats.php` | GET | Analytics summary (requires `key` param) |
+| `/api/postback.php` | GET | Chaturbate conversion postback receiver |
+| `/api/config.php` | GET | Public frontend config (CTA text, A/B tests) |
 
-**Admin (dashboard, JWT auth required):**
+### Development: Fastify + Redis (Local)
+Node.js API server in `packages/api/` for local development with Redis/memory fallback.
+
+**Admin routes (dashboard, future):**
 | Route | Method | Purpose |
 |---|---|---|
 | `/api/admin/config` | GET/PUT | Read/update all dashboard settings |
@@ -695,16 +739,20 @@ Stored in MySQL `events` table. Feeds both the analytics dashboard AND personali
 | **Health** | Pool sizes, cache freshness, cron timing, API errors, embed load failures |
 
 ### A/B Testing
-Dead simple. A test is:
-```json
-{"test_id": "start_screen_v2", "variants": ["splash", "instant"], "split": [50, 50], "active": true}
-```
-On page load, JS checks localStorage for assigned variant. If none, assigns based on
-split ratio and stores it. Every event includes active variant assignments. Dashboard
-compares metrics between variants.
+Tests are managed via the admin dashboard (`/admin/`). Tests stored in MySQL `ab_tests` table, loaded by `config.php`, assigned client-side via `ab.ts` (localStorage), included in all analytics events.
 
-Planned A/B tests: start screen vs instant start, CTA placement, CTA destination
-(room vs registration), transition speed, personalization on vs off.
+**Active Tests (6 total, all wired in frontend):**
+
+| Test | Variants | What It Changes | Where in Code |
+|---|---|---|---|
+| `start_screen` | `control`, `instant` | Skip splash → straight to roulette | `Index.tsx` |
+| `cta_copy` | `watch_live`, `go_live`, `chat_now` | CTA button text | `RouletteView.tsx` |
+| `cta_delay` | `fast`, `normal`, `slow` | CTA appears at 15s / 30s / 60s | `RouletteView.tsx` + `cta-timing.ts` |
+| `gender_default` | `all`, `female` | Default gender filter | `RouletteView.tsx` |
+| `overlay_timeout` | `fast`, `normal`, `slow` | UI auto-hide at 3s / 5s / 8s | `RouletteView.tsx` |
+| `swipe_hint` | `control`, `hidden` | Show "Swipe up" hint or not | `RouletteView.tsx` |
+
+**Results:** Dashboard shows per-variant conversion rates, two-proportion Z-test significance, and plain-English recommendations ("Switch to X — it's +34% better with 97% confidence").
 
 ---
 
@@ -1209,7 +1257,7 @@ Victor must be able to pause/override any agent, agents failing must never break
 12. ~~**Phase 7: A/B testing**~~ ✓ — Variant assignment (localStorage), two-proportion Z-test significance calculator, 2 running tests (start_screen, cta_copy), config-driven
 13. ~~**Phase 8: CTA timing**~~ ✓ — Engagement-based CTA progression (6 phases: hidden→soft→curiosity→first→pressure→direct), dynamic gender-aware copy, session timer
 14. ~~**Phase 9: Tests**~~ ✓ — 17 unit tests (cta-timing, pool-matcher), health check script, vitest setup
-15. **Dashboard MVP** — React SPA, config management, basic metrics
+15. ~~**Dashboard MVP**~~ ✓ — PHP admin panel at `/admin/`, session auth, analytics overview (KPI cards, funnel, devices, session depth), A/B test management (create/start/pause/complete/delete from browser), per-variant significance with plain-English recommendations, top performers, conversions, 6 A/B tests wired up (start_screen, cta_copy, cta_delay, gender_default, overlay_timeout, swipe_hint), auto-refresh 60s
 16. **Content engine** — Model pages, blog posts, static HTML generation
 
 ---
@@ -1245,17 +1293,26 @@ CB_API_URL=https://chaturbate.com/api/public/affiliates/onlinerooms/
 CB_API_TOKEN=          # Not needed — public API uses wm param
 AFFILIATE_CAMPAIGN=roGHG
 AFFILIATE_TOUR=9oGW
-AFFILIATE_TRACK=wetroulette
+AFFILIATE_TRACK=xcamvip-roulette
 REDIS_URL=redis://localhost:6379
 MYSQL_HOST=localhost
 MYSQL_PASSWORD=        # Empty = MySQL disabled, events buffer in memory
 ```
 
-### Key URLs
+### Key URLs (Local Dev)
 - Frontend: `http://localhost:5173`
 - API health: `http://localhost:3001/api/health`
 - Pool stats: `http://localhost:3001/api/pool/stats`
 - Embed test page: `http://localhost:5173/test-embed.html`
+
+### Key URLs (Production — xcam.vip)
+- Site: `https://xcam.vip`
+- Pool next: `https://xcam.vip/api/pool-next.php?session_id=xxx&gender=f`
+- Stats: `https://xcam.vip/api/stats.php?key=STATS_KEY`
+- Embed test: `https://xcam.vip/test-embed.html`
+
+### Multi-Domain Deployment
+The same codebase runs on multiple domains. Each domain gets its own `_config.php` (affiliate track, DB creds, CORS, whitelabel domain) and separate MySQL database. See `docs/multi-domain-setup.md` for complete setup instructions.
 
 ---
 

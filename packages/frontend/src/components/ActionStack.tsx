@@ -7,34 +7,33 @@ interface ActionStackProps {
   liked: boolean;
   onLike: () => void;
   onSound: () => void;
-  onProfile: () => void;
+  onChat: () => void;
+  onFollow: () => void;
 }
 
-const ActionStack = ({ performer, liked, onLike, onSound, onProfile }: ActionStackProps) => {
+const ActionStack = ({ performer, liked, onLike, onSound, onChat, onFollow }: ActionStackProps) => {
   const handleShare = async () => {
+    const shareUrl = `https://xcam.vip/?ref=${encodeURIComponent(performer.username)}&campaign=roGHG&tour=9oGW&track=social_share`;
     const shareData = {
-      title: `${performer.username} is live on xcam.vip`,
-      url: performer.room_url,
+      title: `Watch ${performer.display_name} live on xcam.vip`,
+      text: `${performer.display_name} is streaming live right now on xcam.vip — free cam roulette`,
+      url: shareUrl,
     };
     try {
       if (navigator.share) {
         await navigator.share(shareData);
         tracker.track("share_clicked", { performer_id: performer.username, share_method: "native" });
       } else {
-        await navigator.clipboard.writeText(performer.room_url);
+        await navigator.clipboard.writeText(shareUrl);
         tracker.track("share_clicked", { performer_id: performer.username, share_method: "clipboard" });
       }
-    } catch { /* user cancelled share dialog */ }
-  };
-
-  const handleChat = () => {
-    window.open(performer.room_url, "_blank", "noopener,noreferrer");
+    } catch { /* user cancelled */ }
   };
 
   return (
     <div className="flex flex-col items-center gap-5">
-      {/* Avatar — performer thumbnail */}
-      <button onClick={onProfile} className="relative btn-press" aria-label="View profile">
+      {/* Avatar — performer thumbnail + follow */}
+      <button onClick={onFollow} className="relative btn-press" aria-label="Follow">
         <div className="w-12 h-12 rounded-full border-2 border-foreground/30 overflow-hidden bg-card">
           <img
             src={performer.image_url}
@@ -61,15 +60,15 @@ const ActionStack = ({ performer, liked, onLike, onSound, onProfile }: ActionSta
         </span>
       </button>
 
-      {/* Chat — opens performer's room */}
-      <button onClick={handleChat} className="btn-press flex flex-col items-center gap-1" aria-label="Open chat">
+      {/* Chat — soft CTA popup */}
+      <button onClick={onChat} className="btn-press flex flex-col items-center gap-1" aria-label="Chat">
         <div className="w-11 h-11 rounded-full glass flex items-center justify-center">
           <MessageCircle size={24} className="text-foreground" strokeWidth={1.5} />
         </div>
         <span className="text-[10px] text-foreground text-overlay font-medium">Chat</span>
       </button>
 
-      {/* Share */}
+      {/* Share — shares xcam.vip with performer context */}
       <button onClick={handleShare} className="btn-press flex flex-col items-center gap-1" aria-label="Share">
         <div className="w-11 h-11 rounded-full glass flex items-center justify-center">
           <Share2 size={24} className="text-foreground" strokeWidth={1.5} />
@@ -77,7 +76,7 @@ const ActionStack = ({ performer, liked, onLike, onSound, onProfile }: ActionSta
         <span className="text-[10px] text-foreground text-overlay font-medium">Share</span>
       </button>
 
-      {/* Sound — opens prompt to visit room */}
+      {/* Sound — soft CTA popup */}
       <button onClick={onSound} className="btn-press flex flex-col items-center gap-1" aria-label="Sound">
         <div className="w-11 h-11 rounded-full glass flex items-center justify-center">
           <VolumeX size={24} className="text-foreground" strokeWidth={1.5} />

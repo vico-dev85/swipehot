@@ -12,6 +12,34 @@ const MAX_ALPHA = 0.85;
 const ALPHA_RAMP = 20; // swipes to reach max alpha
 const BOREDOM_WINDOW = 10;
 const BOREDOM_SKIP_THRESHOLD = 0.7; // 70% skip rate triggers boredom
+const IMPLICIT_WEIGHT = 0.7; // age/country weighted lower than explicit tags
+
+// Known countries (same list as performer-info.ts)
+const KNOWN_COUNTRIES = new Set([
+  "US","CO","RO","RU","UA","GB","ES","MX","BR","DE","FR","IT","CA","AU",
+  "NL","PL","CZ","AR","CL","PE","PH","TH","JP","KR","IN","ZA","NZ","SE",
+  "LT","LV","EE","HU","PT","VE","EC",
+]);
+
+/** Build synthetic tags from structured data (age bucket + country) */
+function buildSyntheticTags(age: number | null, country: string): string[] {
+  const synthetic: string[] = [];
+
+  // Age bucket — only legit ages (18-69)
+  if (age !== null && age >= 18 && age <= 69) {
+    if (age <= 22) synthetic.push("age_18_22");
+    else if (age <= 30) synthetic.push("age_23_30");
+    else if (age <= 40) synthetic.push("age_31_40");
+    else synthetic.push("age_41_plus");
+  }
+
+  // Country — only known 2-letter codes
+  if (country && country.length === 2 && KNOWN_COUNTRIES.has(country.toUpperCase())) {
+    synthetic.push("country_" + country.toLowerCase());
+  }
+
+  return synthetic;
+}
 
 interface BrainState {
   preferences: Record<string, number>;
@@ -46,11 +74,14 @@ let state = loadState();
 /**
  * Update preferences after viewing a performer.
  * action: 'skip' | 'like' | 'cta'
+ * age/country: structured data for synthetic tag generation (optional)
  */
 export function updatePreferences(
   tags: string[],
   action: "skip" | "like" | "cta",
-  watchSeconds: number
+  watchSeconds: number,
+  age?: number | null,
+  country?: string
 ): void {
   // Calculate signal weight
   const weight =
@@ -74,9 +105,15 @@ export function updatePreferences(
     }
   }
 
-  // Apply new signal to performer's tags
+  // Apply new signal to performer's explicit tags
   for (const tag of tags) {
     state.preferences[tag] = (state.preferences[tag] || 0) + weight;
+  }
+
+  // Apply synthetic tags (age bucket + country) at reduced weight
+  const synthetic = buildSyntheticTags(age ?? null, country ?? "");
+  for (const tag of synthetic) {
+    state.preferences[tag] = (state.preferences[tag] || 0) + weight * IMPLICIT_WEIGHT;
   }
 
   // Track swipe count and watch time for boredom detection

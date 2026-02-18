@@ -28,13 +28,15 @@ export interface CTAState {
 
 /**
  * Get CTA phase based on cumulative session watch time (seconds).
+ * @param delayMultiplier - A/B testable: 0.5 = faster, 1 = normal, 2 = slower
  */
-export function getCTAPhase(sessionSeconds: number): CTAPhase {
-  if (sessionSeconds < 30) return "hidden";
-  if (sessionSeconds < 60) return "soft";
-  if (sessionSeconds < 120) return "curiosity";
-  if (sessionSeconds < 180) return "first";
-  if (sessionSeconds < 300) return "pressure";
+export function getCTAPhase(sessionSeconds: number, delayMultiplier = 1): CTAPhase {
+  const m = delayMultiplier;
+  if (sessionSeconds < 30 * m) return "hidden";
+  if (sessionSeconds < 60 * m) return "soft";
+  if (sessionSeconds < 120 * m) return "curiosity";
+  if (sessionSeconds < 180 * m) return "first";
+  if (sessionSeconds < 300 * m) return "pressure";
   return "direct";
 }
 
@@ -43,13 +45,15 @@ export function getCTAPhase(sessionSeconds: number): CTAPhase {
  * @param sessionSeconds - total seconds spent in the roulette this session
  * @param gender - current performer's gender code
  * @param viewerCount - current performer's viewer count
+ * @param delayMultiplier - A/B testable timing scale (0.5 = fast, 1 = normal, 2 = slow)
  */
 export function getCTAState(
   sessionSeconds: number,
   gender: "f" | "m" | "t" | "c",
-  viewerCount: number
+  viewerCount: number,
+  delayMultiplier = 1
 ): CTAState {
-  const phase = getCTAPhase(sessionSeconds);
+  const phase = getCTAPhase(sessionSeconds, delayMultiplier);
   const pronoun = gender === "c" ? "Them" : gender === "m" ? "Him" : "Her";
 
   switch (phase) {

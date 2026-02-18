@@ -57,9 +57,20 @@ const Index = () => {
   const startSession = () => {
     tracker.track("start_clicked", {});
     incrementSessionNumber();
+
+    // Parse UTM params from URL
+    const params = new URLSearchParams(window.location.search);
     tracker.track("session_started", {
       is_returning: getSessionNumber() > 1,
       session_number: getSessionNumber(),
+      utm_source: params.get("utm_source") || "",
+      utm_medium: params.get("utm_medium") || "",
+      utm_campaign: params.get("utm_campaign") || "",
+      ref: params.get("ref") || "",
+      referrer: document.referrer || "direct",
+      device: /Mobi|Android/i.test(navigator.userAgent) ? "mobile" : "desktop",
+      screen: `${screen.width}x${screen.height}`,
+      language: navigator.language || "",
     });
     setScreen("roulette");
   };

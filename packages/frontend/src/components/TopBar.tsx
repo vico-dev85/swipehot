@@ -1,9 +1,8 @@
-import { useState, useEffect } from "react";
 import { Eye } from "lucide-react";
-import { fetchPoolStats } from "@/services/api";
 
 interface TopBarProps {
   activeFilter: string;
+  viewerCount: number;
   onFilterChange: (filter: string) => void;
   onOpenFilter: () => void;
 }
@@ -16,35 +15,17 @@ const filters = [
   { key: "couples", label: "Couples" },
 ];
 
-const TopBar = ({ activeFilter, onFilterChange, onOpenFilter }: TopBarProps) => {
-  const [viewerCount, setViewerCount] = useState<number | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    const fetchCount = async () => {
-      try {
-        const stats = await fetchPoolStats();
-        if (active) setViewerCount(stats.total_viewers);
-      } catch { /* silent */ }
-    };
-    fetchCount();
-    const interval = setInterval(fetchCount, 60_000);
-    return () => { active = false; clearInterval(interval); };
-  }, []);
-
+const TopBar = ({ activeFilter, viewerCount, onFilterChange, onOpenFilter }: TopBarProps) => {
   return (
-    <div className="fixed top-0 left-0 right-0 z-30 gradient-top" style={{ paddingTop: "env(safe-area-inset-top)" }}>
-      {/* Row 1: Logo + LIVE viewer count */}
+    <div className="w-full gradient-top" style={{ paddingTop: "env(safe-area-inset-top)" }}>
+      {/* Row 1: Logo + viewer count */}
       <div className="flex items-center justify-between px-4 h-10">
-        {/* Left: Logo */}
         <img src="/logo.png" alt="xcam.vip" className="h-6" />
-
-        {/* Right: viewer count with green dot */}
         <div className="flex items-center gap-1.5 text-[hsl(var(--text-secondary))]">
           <span className="w-2 h-2 rounded-full bg-success animate-pulse-live" />
           <Eye size={13} strokeWidth={1.5} />
           <span className="text-[11px] tabular-nums font-medium">
-            {viewerCount !== null ? viewerCount.toLocaleString() : "—"}
+            {viewerCount > 1000 ? `${(viewerCount / 1000).toFixed(1)}K` : viewerCount} watching
           </span>
         </div>
       </div>

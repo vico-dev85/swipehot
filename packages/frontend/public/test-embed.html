@@ -1,44 +1,145 @@
 <!DOCTYPE html>
 <html>
-<head><title>Embed Test</title></head>
-<body style="margin:0;background:#111;color:#fff;font-family:sans-serif;padding:20px">
-<h3>Chaturbate Embed Test</h3>
-<p>If you see live video below, the embed URL works. If black/blank, the issue is with Chaturbate's embed.</p>
+<head>
+<title>Embed URL Format Test — xcam.vip</title>
+<style>
+  body { margin:0; background:#0a0a0a; color:#fff; font-family:system-ui,sans-serif; padding:20px }
+  h2 { color:#e94f8a; margin-top:0 }
+  .controls { margin-bottom:20px; display:flex; gap:10px; align-items:center }
+  input { padding:8px 12px; border-radius:6px; border:1px solid #333; background:#1a1a1a; color:#fff; font-size:14px; width:200px }
+  button { padding:8px 16px; border-radius:6px; border:none; background:#e94f8a; color:#fff; font-size:14px; cursor:pointer }
+  button:hover { background:#d13d78 }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; max-width:1400px }
+  .test { background:#151515; border-radius:8px; padding:16px; border:1px solid #222 }
+  .test h4 { margin:0 0 4px; color:#e94f8a; font-size:14px }
+  .test .url { font-size:11px; color:#666; word-break:break-all; margin-bottom:8px; font-family:monospace }
+  .test .status { font-size:12px; padding:4px 8px; border-radius:4px; display:inline-block; margin-bottom:8px }
+  .status.loading { background:#333; color:#aaa }
+  .status.loaded { background:#1a3a1a; color:#4f4 }
+  .status.error { background:#3a1a1a; color:#f44 }
+  iframe { width:100%; aspect-ratio:16/9; border:none; background:#000; border-radius:4px }
+  .note { color:#888; font-size:13px; margin-top:20px; max-width:700px; line-height:1.6 }
+  #online-list { color:#888; font-size:12px; margin-top:4px }
+</style>
+</head>
+<body>
+<h2>Embed URL Format Comparison</h2>
 
-<h4>Test 1: /embed/ with embed_video_only=1</h4>
-<iframe
-  src="https://chaturbate.com/embed/nica_rock/?campaign=roGHG&tour=9oGW&track=wetroulette&room=nica_rock&disable_sound=1&embed_video_only=1&join_overlay=1&mobileRedirect=auto"
-  width="850" height="528"
-  style="border:none"
-  allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-  scrolling="no"
-  referrerpolicy="no-referrer">
-</iframe>
+<div class="controls">
+  <input type="text" id="username" placeholder="performer username" value="">
+  <button onclick="loadAll()">Test All Formats</button>
+  <button onclick="fetchOnline()" style="background:#333">Fetch Online Performer</button>
+</div>
+<div id="online-list"></div>
 
-<h4>Test 2: /embed/ without embed_video_only (full player)</h4>
-<iframe
-  src="https://chaturbate.com/embed/nica_rock/?campaign=roGHG&tour=9oGW&track=wetroulette&room=nica_rock&disable_sound=1"
-  width="850" height="528"
-  style="border:none"
-  allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-  scrolling="no">
-</iframe>
+<div class="grid">
+  <!-- Test A: chaturbate.com /embed/ -->
+  <div class="test">
+    <h4>A: chaturbate.com/embed/{user}/</h4>
+    <div class="status loading" id="status-a">waiting</div>
+    <div class="url" id="url-a">—</div>
+    <iframe id="frame-a" src="about:blank"
+      allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+      scrolling="no" referrerpolicy="origin"></iframe>
+  </div>
 
-<h4>Test 3: /in/ URL from API (should redirect — likely won't show video)</h4>
-<iframe
-  src="https://chaturbate.com/in/?tour=9oGW&campaign=roGHG&track=embed&room=nica_rock&bgcolor=white&embed_video_only=1"
-  width="850" height="528"
-  style="border:none"
-  allow="autoplay; encrypted-media; fullscreen; picture-in-picture">
-</iframe>
+  <!-- Test B: xcam.vip /embed/ (whitelabel embed) -->
+  <div class="test">
+    <h4>B: www.xcam.vip/embed/{user}/</h4>
+    <div class="status loading" id="status-b">waiting</div>
+    <div class="url" id="url-b">—</div>
+    <iframe id="frame-b" src="about:blank"
+      allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+      scrolling="no" referrerpolicy="origin"></iframe>
+  </div>
 
-<h4>Test 4: Raw Chaturbate embed (exactly as API provides in iframe_embed field)</h4>
-<iframe
-  src="https://chaturbate.com/in/?tour=9oGW&campaign=roGHG&track=embed&room=nica_rock&bgcolor=white"
-  width="850" height="528"
-  style="border:none">
-</iframe>
+  <!-- Test C: xcam.vip /in/ (affiliate redirect - user's desired format) -->
+  <div class="test">
+    <h4>C: www.xcam.vip/in/?room={user} (your preferred URL)</h4>
+    <div class="status loading" id="status-c">waiting</div>
+    <div class="url" id="url-c">—</div>
+    <iframe id="frame-c" src="about:blank"
+      allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+      scrolling="no" referrerpolicy="origin"></iframe>
+  </div>
 
-<p style="margin-top:20px;color:#888">Tell me which test(s) show video and which are black/blank.</p>
+  <!-- Test D: chaturbate.com /in/ (affiliate redirect on CB domain) -->
+  <div class="test">
+    <h4>D: chaturbate.com/in/?room={user}</h4>
+    <div class="status loading" id="status-d">waiting</div>
+    <div class="url" id="url-d">—</div>
+    <iframe id="frame-d" src="about:blank"
+      allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+      scrolling="no" referrerpolicy="origin"></iframe>
+  </div>
+</div>
+
+<div class="note">
+  <strong>What to look for:</strong><br>
+  - If a frame shows live video = that URL format works for embedding<br>
+  - If a frame shows black/blank = that URL format doesn't work as an embed<br>
+  - If a frame shows a full page (chat + video) = it loaded a page, not a video-only embed<br>
+  - Report which letter(s) show working video!
+</div>
+
+<script>
+const CAMPAIGN = 'roGHG';
+const TOUR = '9oGW';
+const TRACK = 'xcamvip-roulette';
+
+function buildUrls(user) {
+  return {
+    a: `https://chaturbate.com/embed/${user}/?tour=${TOUR}&campaign=${CAMPAIGN}&track=${TRACK}&disable_sound=1&embed_video_only=1&mobileRedirect=auto`,
+    b: `https://www.xcam.vip/embed/${user}/?tour=${TOUR}&campaign=${CAMPAIGN}&track=${TRACK}&disable_sound=1&embed_video_only=1&mobileRedirect=auto`,
+    c: `https://www.xcam.vip/in/?tour=${TOUR}&campaign=${CAMPAIGN}&track=${TRACK}&room=${user}&disable_sound=1&embed_video_only=1&mobileRedirect=auto`,
+    d: `https://chaturbate.com/in/?tour=${TOUR}&campaign=${CAMPAIGN}&track=${TRACK}&room=${user}&disable_sound=1&embed_video_only=1&mobileRedirect=auto`,
+  };
+}
+
+function loadAll() {
+  const user = document.getElementById('username').value.trim();
+  if (!user) { alert('Enter a performer username first'); return; }
+  const urls = buildUrls(user);
+
+  ['a','b','c','d'].forEach(key => {
+    const frame = document.getElementById('frame-' + key);
+    const urlEl = document.getElementById('url-' + key);
+    const statusEl = document.getElementById('status-' + key);
+
+    frame.src = 'about:blank';
+    urlEl.textContent = urls[key];
+    statusEl.textContent = 'loading...';
+    statusEl.className = 'status loading';
+
+    setTimeout(() => {
+      frame.src = urls[key];
+      frame.onload = () => {
+        statusEl.textContent = 'iframe loaded';
+        statusEl.className = 'status loaded';
+      };
+      frame.onerror = () => {
+        statusEl.textContent = 'load error';
+        statusEl.className = 'status error';
+      };
+    }, 100);
+  });
+}
+
+async function fetchOnline() {
+  try {
+    const sessionId = Math.random().toString(16).slice(2) + Math.random().toString(16).slice(2);
+    const res = await fetch('/api/pool-next.php?session_id=' + sessionId + '&gender=f');
+    const data = await res.json();
+    if (data.username) {
+      document.getElementById('username').value = data.username;
+      document.getElementById('online-list').textContent = 'Got: ' + data.username + ' (' + data.num_users + ' viewers)';
+    } else {
+      document.getElementById('online-list').textContent = 'Error: ' + JSON.stringify(data);
+    }
+  } catch(e) {
+    document.getElementById('online-list').textContent = 'Fetch error: ' + e.message;
+  }
+}
+</script>
 </body>
 </html>

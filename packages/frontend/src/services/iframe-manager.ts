@@ -36,9 +36,8 @@ export function createIframeManager(): IframeManager {
   // Configure iframe attributes (matching original reference code)
   function configureIframe(iframe: HTMLIFrameElement) {
     iframe.setAttribute("allow", "autoplay; encrypted-media; fullscreen; picture-in-picture");
-    iframe.setAttribute("allowfullscreen", "");
     iframe.setAttribute("scrolling", "no");
-    iframe.setAttribute("referrerpolicy", "no-referrer");
+    iframe.setAttribute("referrerpolicy", "origin");
     iframe.setAttribute("loading", "eager");
     iframe.title = "Live stream";
     // Iframes fill the canvas (which is wider than viewport for center-crop)
@@ -127,6 +126,7 @@ export function createIframeManager(): IframeManager {
         position: absolute;
         top: 0;
         left: 0;
+        width: 100%;
         height: 100%;
       `;
       canvas.appendChild(iframeA);
@@ -135,6 +135,8 @@ export function createIframeManager(): IframeManager {
 
       mounted = true;
       applyCrop();
+      // Retry crop after layout settles (container may not have dimensions yet)
+      requestAnimationFrame(() => applyCrop());
 
       window.addEventListener("resize", onResize);
       document.addEventListener("visibilitychange", onVisibilityChange);
@@ -150,28 +152,33 @@ export function createIframeManager(): IframeManager {
       if (preloadedUrl === embedUrl) return;
       preloadedUrl = embedUrl;
 
-      recycleIframe(preloadIframe);
-      requestAnimationFrame(() => {
-        preloadIframe.src = embedUrl;
-        // On iOS, keep preload iframe visible behind active for autoplay
-        if (isIOS) {
-          preloadIframe.style.opacity = "1";
-          preloadIframe.style.zIndex = "0";
-          activeIframe.style.zIndex = "1";
-        }
-      });
+      // Set src directly — no about:blank recycle needed.
+      // The browser navigates away from whatever's loaded (usually already blank after swap cleanup).
+      preloadIframe.src = embedUrl;
+
+      // On iOS, keep preload iframe visible behind active for autoplay
+      if (isIOS) {
+        preloadIframe.style.opacity = "1";
+        preloadIframe.style.zIndex = "0";
+        activeIframe.style.zIndex = "1";
+      }
     },
 
     swap() {
       const incoming = preloadIframe;
       const outgoing = activeIframe;
+      let cleanedUp = false;
 
       requestAnimationFrame(() => {
         setVisible(incoming);
         setHidden(outgoing);
 
-        // After fade-out, recycle old iframe
+        // After fade-out, recycle old iframe — but only if nothing was preloaded into it
         const cleanup = () => {
+          if (cleanedUp) return;
+          cleanedUp = true;
+          // If preload() already loaded a new URL into this iframe, don't destroy it
+          if (preloadedUrl !== null) return;
           requestAnimationFrame(() => {
             recycleIframe(outgoing);
           });

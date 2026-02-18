@@ -32,7 +32,7 @@ class EventTracker {
   private queue: TrackedEvent[] = [];
   private flushTimer: ReturnType<typeof setInterval> | null = null;
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
-  private endpoint = `${import.meta.env.VITE_API_URL || ""}/api/events`;
+  private endpoint = `${import.meta.env.VITE_API_URL || ""}/api/events.php`;
   private sessionStartTime = Date.now();
   private performersViewed = 0;
   private ctaClicks = 0;

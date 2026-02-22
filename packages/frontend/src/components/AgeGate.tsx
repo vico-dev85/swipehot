@@ -10,7 +10,7 @@ const AgeGate = ({ onEnter }: AgeGateProps) => {
 
   const handleEnter = () => {
     if (remember) {
-      document.cookie = "xcam_age_verified=true;max-age=31536000;path=/;SameSite=Strict;Secure";
+      document.cookie = "age_verified=true;max-age=31536000;path=/;SameSite=Strict;Secure";
     }
     onEnter();
   };
@@ -26,7 +26,7 @@ const AgeGate = ({ onEnter }: AgeGateProps) => {
         {/* Logo image */}
         <img
           src="/logo.png"
-          alt="xcam.vip"
+          alt="SwipeHot"
           className="h-10 object-contain"
         />
 

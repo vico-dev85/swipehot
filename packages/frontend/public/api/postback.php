@@ -4,7 +4,7 @@
  * Receives conversion notifications from Chaturbate's affiliate system.
  *
  * Set your postback URL in Chaturbate affiliate dashboard to:
- * https://xcam.vip/api/postback.php
+ * https://swipe.hot/api/postback.php
  *
  * Chaturbate will call this with GET params on every conversion.
  */

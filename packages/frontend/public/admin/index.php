@@ -10,7 +10,7 @@ header('Content-Type: text/html; charset=UTF-8');
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
-<title>xcam.vip Admin</title>
+<title>SwipeHot Admin</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 :root {
@@ -172,7 +172,7 @@ a { color: var(--cyan); text-decoration: none; }
 <!-- LOGIN -->
 <div class="login-wrap">
   <div class="login-card">
-    <h1>xcam.vip</h1>
+    <h1>SwipeHot</h1>
     <p>Admin Dashboard</p>
     <div class="login-error" id="loginError"></div>
     <form id="loginForm" onsubmit="return doLogin(event)">
@@ -203,7 +203,7 @@ async function doLogin(e) {
 <!-- DASHBOARD -->
 <div class="dash">
   <div class="header">
-    <h1><span class="refresh-dot"></span>xcam.vip Admin</h1>
+    <h1><span class="refresh-dot"></span>SwipeHot Admin</h1>
     <div class="header-right">
       <div class="period-pills">
         <button class="pill" data-p="today">Today</button>

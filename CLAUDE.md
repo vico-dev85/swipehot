@@ -1,15 +1,17 @@
-# xcam.vip — Live Cam Roulette Platform
+# Live Cam Roulette Platform
 
 ## What This Is
 
-TikTok-style live cam roulette on **xcam.vip**. Shows random live Chaturbate performers full-screen, muted. Users swipe through fast; when they want sound/chat/room they click through to **www.xcam.vip** (Chaturbate white label, same owner). Revenue = Chaturbate affiliate commissions.
+TikTok-style live cam roulette. Shows random live Chaturbate performers full-screen, muted. Users swipe through fast; when they want sound/chat/room they click through to the white label. Revenue = Chaturbate affiliate commissions.
 
-Custom-built: TypeScript monorepo, React SPA roulette, PHP production API, static HTML content pages, PHP admin dashboard, TypeScript CLI content engine. All on nginx/FastPanel dedicated server.
+Custom-built: TypeScript monorepo, React SPA roulette, PHP production API, static HTML content pages (SEO), PHP admin dashboard, TypeScript CLI content engine. All on nginx/FastPanel dedicated server.
+
+**Brand: SwipeHot** — deploying to **swipe.hot**. White-label architecture — only `.env` and `_config.php` change per domain.
 
 | Domain | Role |
 |---|---|
-| **xcam.vip** | Roulette app, API, content pages, dashboard |
-| **www.xcam.vip** | Chaturbate white label — registration, rooms, embeds |
+| **swipe.hot** | Roulette app, API, content pages, dashboard |
+| **www.swipe.hot** | Chaturbate white label — registration, rooms, embeds |
 
 ---
 
@@ -19,11 +21,11 @@ Custom-built: TypeScript monorepo, React SPA roulette, PHP production API, stati
 |---|---|
 | Campaign | `roGHG` |
 | Tour | `9oGW` |
-| Track | `xcamvip-roulette` |
-| Embed | `https://www.xcam.vip/embed/{username}/?campaign=roGHG&tour=9oGW&track=xcamvip-roulette&disable_sound=1&embed_video_only=1&mobileRedirect=auto&sid={session_id}_{username}` |
-| CTA (room) | `https://chaturbate.com/in/?tour=9oGW&campaign=roGHG&track=xcamvip-roulette&room={username}` |
+| Track | `swipehot-roulette` |
+| Embed | `https://{whitelabelDomain}/embed/{username}/?campaign=roGHG&tour=9oGW&track={track}&disable_sound=1&embed_video_only=1&mobileRedirect=auto&sid={session_id}_{username}` |
+| CTA (room) | `https://chaturbate.com/in/?tour=9oGW&campaign=roGHG&track={track}&room={username}` |
 
-**CRITICAL:** `/embed/{username}/` = embeddable iframe src (200). `/in/` = 302 redirect — NEVER use in iframes. Always use white label domain (`www.xcam.vip`) for embeds.
+**CRITICAL:** `/embed/{username}/` = embeddable iframe src (200). `/in/` = 302 redirect — NEVER use in iframes. Always use white label domain for embeds.
 
 ---
 
@@ -277,12 +279,12 @@ Every content page has: meta tags (title, description, OG, Twitter, canonical), 
 ```nginx
 server {
     listen 443 ssl;
-    server_name xcam.vip;
+    server_name swipe.hot;
 
     location / { root /path/to/public; try_files $uri $uri/ /index.html; }
     location /models/ { root /path/to/public; try_files $uri $uri/index.html =404; }
     location /blog/ { root /path/to/public; try_files $uri $uri/index.html =404; }
-    # Category hubs: /{slug}-cams/ → need location blocks per category or regex
+    location ~ ^/([a-z-]+)-cams(/.*)?$ { root /path/to/public; try_files $uri $uri/ /$1-cams/index.html =404; }
     location /admin/ { root /path/to/public; try_files $uri /admin/index.html; }
     location = /sitemap.xml { root /path/to/public; }
     location = /robots.txt { root /path/to/public; }
@@ -333,17 +335,8 @@ cd packages/frontend && npm run dev  # Vite proxies /api/* to localhost:3001
 
 ---
 
-## Build Status — ALL COMPLETE
+## Build Status — ALL CODE COMPLETE
 
-Phases 0-9 (roulette app) ✓ | Dashboard MVP ✓ | Content engine (model pages + listicles + blog pipeline) ✓ | 56K keywords processed ✓ | 12 research papers ✓ | Token calculator page ✓
+Phases 0-9 (roulette app) ✓ | Dashboard MVP ✓ | Content engine (listicles + blog + model pages) ✓ | 56K keywords processed ✓ | 12 research papers ✓ | Token calculator page ✓
 
-**What's next:** Integration testing → deploy content engine to server → set up cron → generate first blog posts → monitor. See memory files for detailed next-steps.
-
----
-
-## Notes
-
-- **Domain migration planned:** xcam.vip → .com domain (Avast blocks xcam.vip heuristically)
-- **Multi-domain ready:** Same codebase, different `_config.php` per domain
-- **Research complete:** 12 papers in `researches/results/`, synthesis in `research-synthesis.md`
-- **Dashboard:** PHP at `/admin/`, session auth (`ADMIN_PASS` in `_config.php`), analytics, A/B test management
+**Next: Deploy to swipe.hot** — point DNS to server, set up .env + _config.php, install Node.js, run `collect` + `build-pages`, configure nginx, set up cron. See `memory/content-engine-plan.md` for full checklist.

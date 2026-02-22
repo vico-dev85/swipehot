@@ -3,7 +3,7 @@ set_time_limit(600);
 ob_start();
 echo "<pre>\n";
 
-$webroot = "/var/www/xcam_vip_usr50/data/www/xcam.vip";
+$webroot = "/home/deploy/swipehot";
 $nodeDir = "$webroot/_node";
 $nodeVersion = "v20.18.1";
 $tarFile = "$webroot/node.tar.gz";

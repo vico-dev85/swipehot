@@ -1,9 +1,9 @@
 {
-  "name": "@xcamvip/frontend",
+  "name": "@swipehot/frontend",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "xcam.vip roulette — React SPA (Vite + TypeScript + Tailwind)",
+  "description": "SwipeHot roulette — React SPA (Vite + TypeScript + Tailwind)",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

@@ -1,8 +1,8 @@
 {
-  "name": "xcamvip",
+  "name": "swipehot",
   "version": "0.1.0",
   "private": true,
-  "description": "xcam.vip — Live cam roulette platform",
+  "description": "swipe.hot — Live cam roulette platform",
   "workspaces": [
     "packages/shared",
     "packages/api",

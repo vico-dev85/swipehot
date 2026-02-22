@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Embed URL Format Test — xcam.vip</title>
+<title>Embed URL Format Test — SwipeHot</title>
 <style>
   body { margin:0; background:#0a0a0a; color:#fff; font-family:system-ui,sans-serif; padding:20px }
   h2 { color:#e94f8a; margin-top:0 }
@@ -43,9 +43,9 @@
       scrolling="no" referrerpolicy="origin"></iframe>
   </div>
 
-  <!-- Test B: xcam.vip /embed/ (whitelabel embed) -->
+  <!-- Test B: whitelabel /embed/ -->
   <div class="test">
-    <h4>B: www.xcam.vip/embed/{user}/</h4>
+    <h4>B: www.swipe.hot/embed/{user}/</h4>
     <div class="status loading" id="status-b">waiting</div>
     <div class="url" id="url-b">—</div>
     <iframe id="frame-b" src="about:blank"
@@ -53,9 +53,9 @@
       scrolling="no" referrerpolicy="origin"></iframe>
   </div>
 
-  <!-- Test C: xcam.vip /in/ (affiliate redirect - user's desired format) -->
+  <!-- Test C: whitelabel /in/ (affiliate redirect) -->
   <div class="test">
-    <h4>C: www.xcam.vip/in/?room={user} (your preferred URL)</h4>
+    <h4>C: www.swipe.hot/in/?room={user}</h4>
     <div class="status loading" id="status-c">waiting</div>
     <div class="url" id="url-c">—</div>
     <iframe id="frame-c" src="about:blank"
@@ -85,13 +85,13 @@
 <script>
 const CAMPAIGN = 'roGHG';
 const TOUR = '9oGW';
-const TRACK = 'xcamvip-roulette';
+const TRACK = 'swipehot-roulette';
 
 function buildUrls(user) {
   return {
     a: `https://chaturbate.com/embed/${user}/?tour=${TOUR}&campaign=${CAMPAIGN}&track=${TRACK}&disable_sound=1&embed_video_only=1&mobileRedirect=auto`,
-    b: `https://www.xcam.vip/embed/${user}/?tour=${TOUR}&campaign=${CAMPAIGN}&track=${TRACK}&disable_sound=1&embed_video_only=1&mobileRedirect=auto`,
-    c: `https://www.xcam.vip/in/?tour=${TOUR}&campaign=${CAMPAIGN}&track=${TRACK}&room=${user}&disable_sound=1&embed_video_only=1&mobileRedirect=auto`,
+    b: `https://www.swipe.hot/embed/${user}/?tour=${TOUR}&campaign=${CAMPAIGN}&track=${TRACK}&disable_sound=1&embed_video_only=1&mobileRedirect=auto`,
+    c: `https://www.swipe.hot/in/?tour=${TOUR}&campaign=${CAMPAIGN}&track=${TRACK}&room=${user}&disable_sound=1&embed_video_only=1&mobileRedirect=auto`,
     d: `https://chaturbate.com/in/?tour=${TOUR}&campaign=${CAMPAIGN}&track=${TRACK}&room=${user}&disable_sound=1&embed_video_only=1&mobileRedirect=auto`,
   };
 }

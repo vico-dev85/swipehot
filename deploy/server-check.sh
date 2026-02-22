@@ -1,5 +1,5 @@
 #!/bin/bash
-WEBROOT="/var/www/xcam_vip_usr50/data/www/xcam.vip"
+WEBROOT="/home/deploy/swipehot"
 OUT="$WEBROOT/check.txt"
 echo "=== Server Check $(date) ===" > $OUT
 echo "User: $(whoami)" >> $OUT

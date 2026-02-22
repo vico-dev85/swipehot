@@ -3,12 +3,16 @@
 # Quick status refresh: collect online models (no screenshots/bios) + rebuild pages
 #
 # Crontab entry:
-#   */30 * * * * /path/to/xcamvip/packages/content-engine/scripts/cron-light.sh >> /var/log/xcamvip-light.log 2>&1
+#   */30 * * * * /path/to/swipehot/packages/content-engine/scripts/cron-light.sh >> /var/log/swipehot-light.log 2>&1
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PKG_DIR="$(dirname "$SCRIPT_DIR")"
+REPO_ROOT="$(dirname "$(dirname "$PKG_DIR")")"
+
+# Add local Node.js to PATH (installed via install-node.php)
+export PATH="$REPO_ROOT/_node/bin:$PATH"
 
 cd "$PKG_DIR"
 

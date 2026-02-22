@@ -47,11 +47,11 @@ function isLegitAge(age: number | null): age is number {
   return age !== null && age >= 18 && age <= 69;
 }
 
-function isLegitCountry(code: string): boolean {
-  return code.length === 2 && code in COUNTRIES;
+function isLegitCountry(code: string | undefined | null): code is string {
+  return !!code && code.length === 2 && code in COUNTRIES;
 }
 
-function formatLanguages(raw: string): string | null {
+function formatLanguages(raw: string | undefined | null): string | null {
   if (!raw || !raw.trim()) return null;
   // Chaturbate sends space-separated: "English Spanish"
   const langs = raw.trim().split(/\s+/).filter(Boolean);
@@ -68,8 +68,8 @@ export interface InfoLine {
 
 export function buildInfoLine(
   age: number | null,
-  country: string,
-  spokenLanguages: string,
+  country: string | undefined | null,
+  spokenLanguages: string | undefined | null,
 ): InfoLine {
   const hasAge = isLegitAge(age);
   const hasCountry = isLegitCountry(country);

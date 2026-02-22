@@ -16,7 +16,7 @@ const getCookie = (name: string) => {
 
 const Index = () => {
   const [screen, setScreen] = useState<Screen>(() => {
-    return getCookie("xcam_age_verified") ? "splash" : "age-gate";
+    return getCookie("age_verified") ? "splash" : "age-gate";
   });
 
   // Fetch config + assign A/B variants on mount
@@ -45,7 +45,7 @@ const Index = () => {
 
   // Apply start_screen A/B test: "instant" variant skips splash → goes straight to roulette
   const handleAgeGatePassed = () => {
-    tracker.track("age_gate_passed", { remembered: !!getCookie("xcam_age_verified") });
+    tracker.track("age_gate_passed", { remembered: !!getCookie("age_verified") });
     const startScreenVariant = getVariant("start_screen");
     if (startScreenVariant === "instant") {
       startSession();

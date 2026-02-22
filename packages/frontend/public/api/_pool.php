@@ -200,15 +200,18 @@ function getPool(string $gender = 'all'): array {
 
 /**
  * Build embed URL for iframe.
+ * Uses /embed/{username}/ on the white label domain.
  */
 function buildEmbedUrl(array $performer, string $sessionId = ''): string {
     $params = [
-        'tour' => AFFILIATE_TOUR,
         'campaign' => AFFILIATE_CAMPAIGN,
-        'track' => AFFILIATE_TRACK,
         'disable_sound' => '1',
-        'mobileRedirect' => 'auto',
         'embed_video_only' => '1',
+        'join_overlay' => '1',
+        'mobileRedirect' => 'auto',
+        'room' => $performer['username'],
+        'tour' => AFFILIATE_TOUR,
+        'track' => 'embed',
     ];
     if ($sessionId) {
         $params['sid'] = $sessionId . '_' . $performer['username'];

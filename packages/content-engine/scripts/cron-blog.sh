@@ -5,12 +5,16 @@
 # Stops automatically when the queue is empty.
 #
 # Crontab entry:
-#   0 4 * * * /path/to/xcamvip/packages/content-engine/scripts/cron-blog.sh >> /var/log/xcamvip-blog.log 2>&1
+#   0 4 * * * /path/to/swipehot/packages/content-engine/scripts/cron-blog.sh >> /var/log/swipehot-blog.log 2>&1
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PKG_DIR="$(dirname "$SCRIPT_DIR")"
+REPO_ROOT="$(dirname "$(dirname "$PKG_DIR")")"
+
+# Add local Node.js to PATH (installed via install-node.php)
+export PATH="$REPO_ROOT/_node/bin:$PATH"
 
 cd "$PKG_DIR"
 

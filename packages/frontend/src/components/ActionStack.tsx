@@ -13,10 +13,10 @@ interface ActionStackProps {
 
 const ActionStack = ({ performer, liked, onLike, onSound, onChat, onFollow }: ActionStackProps) => {
   const handleShare = async () => {
-    const shareUrl = `https://xcam.vip/?ref=${encodeURIComponent(performer.username)}&campaign=roGHG&tour=9oGW&track=social_share`;
+    const shareUrl = `https://swipe.hot/?ref=${encodeURIComponent(performer.username)}&campaign=roGHG&tour=9oGW&track=social_share`;
     const shareData = {
-      title: `Watch ${performer.display_name} live on xcam.vip`,
-      text: `${performer.display_name} is streaming live right now on xcam.vip — free cam roulette`,
+      title: `Watch ${performer.display_name} live on Swipe.Hot`,
+      text: `${performer.display_name} is streaming live right now on Swipe.Hot — free cam roulette`,
       url: shareUrl,
     };
     try {
@@ -68,7 +68,7 @@ const ActionStack = ({ performer, liked, onLike, onSound, onChat, onFollow }: Ac
         <span className="text-[10px] text-foreground text-overlay font-medium">Chat</span>
       </button>
 
-      {/* Share — shares xcam.vip with performer context */}
+      {/* Share — shares swipe.hot with performer context */}
       <button onClick={handleShare} className="btn-press flex flex-col items-center gap-1" aria-label="Share">
         <div className="w-11 h-11 rounded-full glass flex items-center justify-center">
           <Share2 size={24} className="text-foreground" strokeWidth={1.5} />

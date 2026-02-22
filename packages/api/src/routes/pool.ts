@@ -6,26 +6,19 @@ import { selectPerformer } from '../services/pool-matcher.js';
 import { config } from '../config.js';
 
 /**
- * Build embed URL using /embed/{username}/ path.
- *
- * IMPORTANT: The Chaturbate API's iframe_embed field uses /in/ which is a 302 redirect —
- * that does NOT work as an iframe src. The actual embeddable player lives at /embed/{username}/.
- *
- * We use chaturbate.com directly for now. When the white label domain (www.xcam.vip) SSL
- * is working, switch embedDomain to config.whitelabelDomain to avoid ad blockers.
+ * Build embed URL using /embed/{username}/ on white label domain.
  */
 function buildEmbedUrl(performer: CachedPerformer): string {
-  const embedDomain = 'chaturbate.com';
   const uname = encodeURIComponent(performer.username);
-  const url = new URL(`https://${embedDomain}/embed/${uname}/`);
+  const url = new URL(`https://${config.whitelabelDomain}/embed/${uname}/`);
   url.searchParams.set('campaign', config.affiliate.campaign);
-  url.searchParams.set('tour', config.affiliate.tour);
-  url.searchParams.set('track', config.affiliate.track);
-  url.searchParams.set('room', performer.username);
   url.searchParams.set('disable_sound', '1');
   url.searchParams.set('embed_video_only', '1');
   url.searchParams.set('join_overlay', '1');
   url.searchParams.set('mobileRedirect', 'auto');
+  url.searchParams.set('room', performer.username);
+  url.searchParams.set('tour', config.affiliate.tour);
+  url.searchParams.set('track', 'embed');
   return url.toString();
 }
 

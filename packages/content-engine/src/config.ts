@@ -35,15 +35,15 @@ export function loadConfig(providerOverride?: AIProvider) {
 
   return {
     // Brand (defaults for local dev — override in .env for production)
-    siteName: optional('SITE_NAME', 'XCam.VIP'),
+    siteName: optional('SITE_NAME', 'SwipeHot'),
     siteTagline: optional('SITE_TAGLINE', 'Live Cam Roulette'),
-    siteDomain: optional('SITE_DOMAIN', 'xcam.vip'),
-    whitelabelDomain: optional('WHITELABEL_DOMAIN', `www.${optional('SITE_DOMAIN', 'xcam.vip')}`),
+    siteDomain: optional('SITE_DOMAIN', 'swipe.hot'),
+    whitelabelDomain: optional('WHITELABEL_DOMAIN', 'cams.swipe.hot'),
 
     // Affiliate
     affiliateCampaign: optional('AFFILIATE_CAMPAIGN', 'roGHG'),
     affiliateTour: optional('AFFILIATE_TOUR', '9oGW'),
-    affiliateTrack: optional('AFFILIATE_TRACK', 'xcamvip-roulette'),
+    affiliateTrack: optional('AFFILIATE_TRACK', 'swipehot-roulette'),
 
     // Database
     mysql: {
@@ -51,7 +51,7 @@ export function loadConfig(providerOverride?: AIProvider) {
       port: parseInt(optional('MYSQL_PORT', '3306'), 10),
       user: optional('MYSQL_USER', 'root'),
       password: optional('MYSQL_PASS', ''),
-      database: optional('MYSQL_DB', 'xcamvip'),
+      database: optional('MYSQL_DB', 'swipehot'),
     },
 
     // AI Provider (key may be empty for non-AI commands like build-pages, status, sitemap)

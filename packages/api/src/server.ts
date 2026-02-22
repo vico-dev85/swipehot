@@ -29,7 +29,7 @@ async function start(): Promise<void> {
   // Register plugins
   await fastify.register(cors, {
     origin: isProd
-      ? ['https://xcam.vip', 'https://www.xcam.vip']
+      ? ['https://swipe.hot', 'https://www.swipe.hot']
       : true,
   });
 
@@ -72,7 +72,7 @@ async function start(): Promise<void> {
 
   // Start server
   await fastify.listen({ port: config.port, host: config.host });
-  console.log(`[Server] xcam.vip API running on http://${config.host}:${config.port}`);
+  console.log(`[Server] API running on http://${config.host}:${config.port}`);
 }
 
 // Graceful shutdown

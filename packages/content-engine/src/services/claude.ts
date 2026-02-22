@@ -501,7 +501,7 @@ export async function generateModelBio(
 
   // Validate no hardcoded brand names leaked
   const lowerBio = parsed.bio.toLowerCase();
-  const forbidden = ['xcam.vip', 'xcam vip', 'strangerflip', 'strangerswipe', 'chaturbate'];
+  const forbidden = ['xcam.vip', 'xcam vip', 'strangerflip', 'strangerswipe', 'swipe.hot', 'swipehot', 'chaturbate'];
   const siteLower = config.siteName.toLowerCase();
   for (const term of forbidden) {
     if (term !== siteLower && lowerBio.includes(term)) {

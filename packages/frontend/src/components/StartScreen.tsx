@@ -48,9 +48,9 @@ const StartScreen = ({ onStart }: StartScreenProps) => {
         {/* Logo */}
         <div className="flex flex-col items-center gap-3">
           <h1 className="text-5xl font-black tracking-tight">
-            <span className="text-foreground">xcam</span>
+            <span className="text-foreground">swipe</span>
             <span className="text-primary">.</span>
-            <span className="text-primary drop-shadow-[0_0_16px_hsla(348,99%,58%,0.6)]">vip</span>
+            <span className="text-primary drop-shadow-[0_0_16px_hsla(348,99%,58%,0.6)]">hot</span>
           </h1>
           <p className="text-sm font-medium text-[hsl(var(--text-tertiary))] tracking-[0.2em] uppercase">
             Live. Random. Real.

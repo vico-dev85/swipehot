@@ -20,7 +20,7 @@ const TopBar = ({ activeFilter, viewerCount, onFilterChange, onOpenFilter }: Top
     <div className="w-full gradient-top" style={{ paddingTop: "env(safe-area-inset-top)" }}>
       {/* Row 1: Logo + viewer count */}
       <div className="flex items-center justify-between px-4 h-10">
-        <img src="/logo.png" alt="xcam.vip" className="h-6" />
+        <img src="/logo.png" alt="SwipeHot" className="h-6" />
         <div className="flex items-center gap-1.5 text-[hsl(var(--text-secondary))]">
           <span className="w-2 h-2 rounded-full bg-success animate-pulse-live" />
           <Eye size={13} strokeWidth={1.5} />

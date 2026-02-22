@@ -2,7 +2,7 @@
 set_time_limit(600);
 echo "<pre>\n";
 
-$webroot = "/var/www/xcam_vip_usr50/data/www/xcam.vip";
+$webroot = "/home/deploy/swipehot";
 $nodeBin = "$webroot/_node/bin";
 $apiDir  = "$webroot/_api";
 $bundle  = "$webroot/api-bundle.tar.gz";
@@ -10,7 +10,7 @@ $bundle  = "$webroot/api-bundle.tar.gz";
 // Step param: ?step=install | ?step=start | ?step=stop | ?step=status
 $step = $_GET['step'] ?? 'all';
 
-echo "=== xcam.vip API Setup (step: $step) ===\n\n";
+echo "=== SwipeHot API Setup (step: $step) ===\n\n";
 
 // Helper: run with node in PATH
 function run($cmd) {
@@ -82,17 +82,17 @@ if ($step === 'install' || $step === 'all') {
         $env .= "HOST=127.0.0.1\n";
         $env .= "CB_API_URL=https://chaturbate.com/api/public/affiliates/onlinerooms/\n";
         $env .= "CB_API_TOKEN=\n";
-        $env .= "WHITELABEL_DOMAIN=www.xcam.vip\n";
+        $env .= "WHITELABEL_DOMAIN=cams.swipe.hot\n";
         $env .= "REDIS_URL=\n";
         $env .= "AFFILIATE_CAMPAIGN=roGHG\n";
         $env .= "AFFILIATE_TOUR=9oGW\n";
-        $env .= "AFFILIATE_TRACK=wetroulette\n";
+        $env .= "AFFILIATE_TRACK=swipehot-roulette\n";
         $env .= "POOL_REFRESH_CRON=*/60 * * * * *\n";
         $env .= "MYSQL_HOST=localhost\n";
         $env .= "MYSQL_PORT=3306\n";
-        $env .= "MYSQL_USER=xcamvip\n";
+        $env .= "MYSQL_USER=swipehot\n";
         $env .= "MYSQL_PASSWORD=\n";
-        $env .= "MYSQL_DATABASE=xcamvip\n";
+        $env .= "MYSQL_DATABASE=swipehot\n";
         file_put_contents($envFile, $env);
         echo "   Created at $envFile\n";
         echo "   NOTE: Edit this file to add MySQL password!\n";

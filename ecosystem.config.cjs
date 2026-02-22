@@ -1,7 +1,7 @@
 module.exports = {
   apps: [
     {
-      name: 'xcamvip-api',
+      name: 'swipehot-api',
       script: 'packages/api/dist/server.js',
       cwd: __dirname,
       instances: 1,
@@ -13,8 +13,8 @@ module.exports = {
       },
       // Logging
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
-      error_file: '/var/log/xcamvip/api-error.log',
-      out_file: '/var/log/xcamvip/api-out.log',
+      error_file: '/var/log/swipehot/api-error.log',
+      out_file: '/var/log/swipehot/api-out.log',
       merge_logs: true,
       // Restart policy
       max_restarts: 10,

@@ -253,8 +253,11 @@ function markSeen(string $sessionId, string $username): void {
 
 /**
  * Personalized performer selection (blended scoring).
+ * $genderWeights: optional map like ['f'=>0.8, 'm'=>0.05, 't'=>0.1, 'c'=>0.05]
+ * When provided, multiplies each performer's score by their gender weight.
+ * Only sent when user is on "all" pool (no explicit gender filter).
  */
-function selectPerformer(array $pool, array $seen, array $preferTags, float $alpha): ?array {
+function selectPerformer(array $pool, array $seen, array $preferTags, float $alpha, array $genderWeights = []): ?array {
     // Filter out seen
     $seenMap = array_flip($seen);
     $unseen = array_filter($pool, fn($p) => !isset($seenMap[$p['username']]));
@@ -262,8 +265,20 @@ function selectPerformer(array $pool, array $seen, array $preferTags, float $alp
 
     if (empty($unseen)) return null;
 
-    // 30% exploration: random pick
+    // 30% exploration: random pick (but still respect strong gender dislikes)
     if (mt_rand(1, 100) <= 30) {
+        if (!empty($genderWeights)) {
+            // Weighted random respecting gender preference even in exploration
+            $totalW = 0;
+            foreach ($unseen as $p) {
+                $totalW += $genderWeights[$p['gender']] ?? 0.25;
+            }
+            $rand = mt_rand() / mt_getrandmax() * $totalW;
+            foreach ($unseen as $p) {
+                $rand -= $genderWeights[$p['gender']] ?? 0.25;
+                if ($rand <= 0) return $p;
+            }
+        }
         return $unseen[array_rand($unseen)];
     }
 
@@ -293,6 +308,13 @@ function selectPerformer(array $pool, array $seen, array $preferTags, float $alp
         }
 
         $blended = $alpha * $persScore + (1 - $alpha) * $popScore;
+
+        // Apply gender weight — multiplies score so preferred genders rank higher
+        if (!empty($genderWeights)) {
+            $gw = $genderWeights[$p['gender']] ?? 0.25;
+            $blended *= $gw;
+        }
+
         $scored[] = ['performer' => $p, 'score' => $blended];
     }
 

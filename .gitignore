@@ -34,3 +34,10 @@ packages/*/package-lock.json
 *.tmp
 *.bak
 analyze-api.js
+
+# Content engine bulk data (too large for git — keep local)
+packages/content-engine/data/raw/
+packages/content-engine/data/processed/
+
+# Assistant planning files (local only)
+assistant/

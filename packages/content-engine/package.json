@@ -2,5 +2,30 @@
   "name": "@xcamvip/content-engine",
   "version": "0.1.0",
   "private": true,
-  "description": "SEO content generator — TypeScript CLI (placeholder, build later)"
+  "type": "module",
+  "description": "SEO content generator — TypeScript CLI for model pages, blog posts, and category hubs",
+  "scripts": {
+    "cli": "tsx src/cli/index.ts",
+    "generate": "tsx src/cli/index.ts generate",
+    "collect": "tsx src/cli/index.ts collect",
+    "build-pages": "tsx src/cli/index.ts build-pages",
+    "cron:heavy": "bash scripts/cron-heavy.sh",
+    "cron:light": "bash scripts/cron-light.sh",
+    "status": "tsx src/cli/index.ts status",
+    "sitemap": "tsx src/cli/index.ts sitemap",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "commander": "^12.1.0",
+    "mysql2": "^3.17.2",
+    "openai": "^6.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.7.0",
+    "vitest": "^4.0.18"
+  }
 }

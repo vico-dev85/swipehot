@@ -1,0 +1,252 @@
+// Category definitions for the 22 living listicle pages.
+// Each category maps to a URL slug, CB API tags, page title, and SEO metadata.
+// Source: assistant/final-page-list.md (cleaned from 56K keywords)
+
+export interface CategoryDef {
+  slug: string;              // URL path: /asian-cams/
+  title: string;             // H1: "Hottest Asian Cam Models Live Now"
+  metaTitle: string;         // <title> tag (50-60 chars ideal)
+  metaDescription: string;   // meta description (120-160 chars)
+  primaryTags: string[];     // CB API tags to match (OR logic — match ANY)
+  secondaryTags: string[];   // Synonym/related tags (also matched)
+  genderFilter?: string;     // CB API gender param (f, m, t, c) — used instead of tags for some pages
+  nsfwLevel: 'safe' | 'nsfw'; // safe = Claude API, nsfw = ArliAI API for intro text
+  combinedVolume: number;    // Estimated monthly search volume
+}
+
+export const CATEGORIES: CategoryDef[] = [
+  {
+    slug: 'asian-cams',
+    title: 'Hottest Asian Cam Models Live Now',
+    metaTitle: 'Asian Cam Models — Live Asian Cams Free',
+    metaDescription: 'Watch the hottest Asian cam models streaming live right now. Japanese, Korean, Thai, Chinese, and Filipina performers ranked by viewers and community votes.',
+    primaryTags: ['asian'],
+    secondaryTags: ['japanese', 'korean', 'chinese', 'thai', 'filipina', 'vietnamese'],
+    nsfwLevel: 'safe',
+    combinedVolume: 109358,
+  },
+  {
+    slug: 'latina-cams',
+    title: 'Hottest Latina Cam Models Live Now',
+    metaTitle: 'Latina Cam Models — Live Latina Cams Free',
+    metaDescription: 'Watch the hottest Latina cam models live. Colombian, Mexican, Brazilian performers ranked by viewer count and community upvotes. Updated every 30 minutes.',
+    primaryTags: ['latina'],
+    secondaryTags: ['latin', 'colombian', 'mexican', 'brazilian', 'spanish'],
+    nsfwLevel: 'safe',
+    combinedVolume: 43505,
+  },
+  {
+    slug: 'teen-cams',
+    title: 'Best 18+ Teen Cam Models Live Now',
+    metaTitle: '18+ Teen Cam Models — Live Young Cams Free',
+    metaDescription: 'Watch the best 18+ teen cam models streaming live. Young performers ranked by viewers and votes. All models verified 18+. Updated every 30 minutes.',
+    primaryTags: ['teen'],
+    secondaryTags: ['young', '18'],
+    nsfwLevel: 'safe',
+    combinedVolume: 36149,
+  },
+  {
+    slug: 'indian-cams',
+    title: 'Hottest Indian Cam Models Live Now',
+    metaTitle: 'Indian Cam Models — Live Indian Cams Free',
+    metaDescription: 'Watch the hottest Indian and Desi cam models live. Ranked by viewer count and community votes. Free to watch, updated every 30 minutes.',
+    primaryTags: ['indian'],
+    secondaryTags: ['desi'],
+    nsfwLevel: 'safe',
+    combinedVolume: 24910,
+  },
+  {
+    slug: 'ebony-cams',
+    title: 'Hottest Ebony Cam Models Live Now',
+    metaTitle: 'Ebony Cam Models — Live Ebony Cams Free',
+    metaDescription: 'Watch the hottest Ebony cam models streaming live right now. Ranked by viewers, community votes, and engagement. Free to watch.',
+    primaryTags: ['ebony'],
+    secondaryTags: ['black', 'african'],
+    nsfwLevel: 'safe',
+    combinedVolume: 23691,
+  },
+  {
+    slug: 'european-cams',
+    title: 'Hottest European Cam Models Live Now',
+    metaTitle: 'European Cam Models — Live Euro Cams Free',
+    metaDescription: 'Watch the hottest European cam models live. Russian, German, French, Czech, and more. Ranked by viewers and community votes. Updated every 30 minutes.',
+    primaryTags: [],
+    secondaryTags: ['russian', 'german', 'french', 'polish', 'italian', 'czech', 'romanian', 'british', 'american', 'spanish', 'ukrainian', 'swedish', 'dutch', 'hungarian'],
+    nsfwLevel: 'safe',
+    combinedVolume: 19434,
+  },
+  {
+    slug: 'anal-cams',
+    title: 'Best Anal Cam Shows Live Now',
+    metaTitle: 'Anal Cam Shows — Live Anal Cams Free',
+    metaDescription: 'Watch the best anal cam shows streaming live. Models ranked by viewer count, community votes, and engagement. Free, updated every 30 minutes.',
+    primaryTags: ['anal'],
+    secondaryTags: [],
+    nsfwLevel: 'nsfw',
+    combinedVolume: 17795,
+  },
+  {
+    slug: 'big-ass-cams',
+    title: 'Best Big Ass Cam Models Live Now',
+    metaTitle: 'Big Ass Cam Models — Live Booty Cams Free',
+    metaDescription: 'Watch the best big ass cam models streaming live. Ranked by viewers and community upvotes. Free to watch, updated every 30 minutes.',
+    primaryTags: ['bigass'],
+    secondaryTags: ['ass', 'booty'],
+    nsfwLevel: 'nsfw',
+    combinedVolume: 10997,
+  },
+  {
+    slug: 'mature-cams',
+    title: 'Hottest Mature & MILF Cam Models Live Now',
+    metaTitle: 'Mature & MILF Cams — Live Mature Cams Free',
+    metaDescription: 'Watch the hottest mature and MILF cam models live. Experienced performers ranked by viewers and community votes. Free, updated every 30 minutes.',
+    primaryTags: ['mature', 'milf'],
+    secondaryTags: ['cougar', 'granny', 'mom', 'mommy'],
+    nsfwLevel: 'safe',
+    combinedVolume: 8855,
+  },
+  {
+    slug: 'lesbian-cams',
+    title: 'Hottest Lesbian Cam Shows Live Now',
+    metaTitle: 'Lesbian Cam Shows — Live Lesbian Cams Free',
+    metaDescription: 'Watch the hottest lesbian cam shows streaming live. Girl-on-girl performers ranked by viewers and community votes. Free, updated every 30 minutes.',
+    primaryTags: ['lesbian'],
+    secondaryTags: ['lesbians', 'girlongirl'],
+    nsfwLevel: 'safe',
+    combinedVolume: 8350,
+  },
+  {
+    slug: 'bdsm-cams',
+    title: 'Best BDSM & Fetish Cam Shows Live Now',
+    metaTitle: 'BDSM Cam Shows — Live Fetish Cams Free',
+    metaDescription: 'Watch the best BDSM and fetish cam shows live. Bondage, femdom, and domination performers ranked by viewers and votes. Updated every 30 minutes.',
+    primaryTags: ['bdsm'],
+    secondaryTags: ['bondage', 'femdom', 'domination', 'submissive', 'kinky'],
+    nsfwLevel: 'nsfw',
+    combinedVolume: 7106,
+  },
+  {
+    slug: 'redhead-cams',
+    title: 'Hottest Redhead Cam Models Live Now',
+    metaTitle: 'Redhead Cam Models — Live Redhead Cams Free',
+    metaDescription: 'Watch the hottest redhead cam models streaming live. Ginger performers ranked by viewer count and community votes. Free, updated every 30 minutes.',
+    primaryTags: ['redhead'],
+    secondaryTags: ['ginger'],
+    nsfwLevel: 'safe',
+    combinedVolume: 6948,
+  },
+  {
+    slug: 'squirt-cams',
+    title: 'Best Squirt Cam Shows Live Now',
+    metaTitle: 'Squirt Cam Shows — Live Squirting Cams Free',
+    metaDescription: 'Watch the best squirt cam shows streaming live. Models ranked by viewer count, community votes, and engagement. Free, updated every 30 minutes.',
+    primaryTags: ['squirt'],
+    secondaryTags: ['squirting'],
+    nsfwLevel: 'nsfw',
+    combinedVolume: 6329,
+  },
+  {
+    slug: 'busty-cams',
+    title: 'Hottest Busty Cam Models Live Now',
+    metaTitle: 'Busty Cam Models — Live Big Boobs Cams Free',
+    metaDescription: 'Watch the hottest busty cam models live. Big boobs performers ranked by viewers and community votes. Free to watch, updated every 30 minutes.',
+    primaryTags: ['bigboobs', 'busty'],
+    secondaryTags: ['bigtits', 'hugetits', 'bigbreasts'],
+    nsfwLevel: 'safe',
+    combinedVolume: 6089,
+  },
+  {
+    slug: 'blonde-cams',
+    title: 'Hottest Blonde Cam Models Live Now',
+    metaTitle: 'Blonde Cam Models — Live Blonde Cams Free',
+    metaDescription: 'Watch the hottest blonde cam models streaming live right now. Ranked by viewer count and community votes. Free, updated every 30 minutes.',
+    primaryTags: ['blonde'],
+    secondaryTags: ['blond'],
+    nsfwLevel: 'safe',
+    combinedVolume: 5366,
+  },
+  {
+    slug: 'feet-cams',
+    title: 'Best Feet & Foot Fetish Cams Live Now',
+    metaTitle: 'Feet Cams — Live Foot Fetish Cams Free',
+    metaDescription: 'Watch the best feet and foot fetish cam shows live. Models ranked by viewers and community votes. Free, updated every 30 minutes.',
+    primaryTags: ['feet'],
+    secondaryTags: ['foot', 'footfetish', 'soles', 'footjob'],
+    nsfwLevel: 'nsfw',
+    combinedVolume: 4540,
+  },
+  {
+    slug: 'brunette-cams',
+    title: 'Hottest Brunette Cam Models Live Now',
+    metaTitle: 'Brunette Cam Models — Live Brunette Cams Free',
+    metaDescription: 'Watch the hottest brunette cam models streaming live. Ranked by viewer count and community votes. Free to watch, updated every 30 minutes.',
+    primaryTags: ['brunette'],
+    secondaryTags: [],
+    nsfwLevel: 'safe',
+    combinedVolume: 4134,
+  },
+  {
+    slug: 'bbw-cams',
+    title: 'Hottest BBW & Curvy Cam Models Live Now',
+    metaTitle: 'BBW Cam Models — Live Curvy Cams Free',
+    metaDescription: 'Watch the hottest BBW and curvy cam models live. Plus-size performers ranked by viewers and community votes. Free, updated every 30 minutes.',
+    primaryTags: ['bbw'],
+    secondaryTags: ['curvy', 'thick', 'chubby', 'plussize'],
+    nsfwLevel: 'safe',
+    combinedVolume: 3206,
+  },
+  {
+    slug: 'couple-cams',
+    title: 'Best Couple Cam Shows Live Now',
+    metaTitle: 'Couple Cam Shows — Live Couples Cams Free',
+    metaDescription: 'Watch the best couple cam shows streaming live. Real couples ranked by viewers and community votes. Free to watch, updated every 30 minutes.',
+    primaryTags: ['couple'],
+    secondaryTags: ['couples', 'duo'],
+    nsfwLevel: 'safe',
+    combinedVolume: 2686,
+  },
+  {
+    slug: 'gay-cams',
+    title: 'Hottest Gay Cam Models Live Now',
+    metaTitle: 'Gay Cam Models — Live Gay Cams Free',
+    metaDescription: 'Watch the hottest gay cam models streaming live. Male performers ranked by viewer count and community votes. Free, updated every 30 minutes.',
+    primaryTags: [],
+    secondaryTags: ['gay'],
+    genderFilter: 'm',
+    nsfwLevel: 'safe',
+    combinedVolume: 2370,
+  },
+  {
+    slug: 'trans-cams',
+    title: 'Hottest Trans Cam Models Live Now',
+    metaTitle: 'Trans Cam Models — Live Trans Cams Free',
+    metaDescription: 'Watch the hottest trans cam models streaming live. Transgender performers ranked by viewers and community votes. Free, updated every 30 minutes.',
+    primaryTags: [],
+    secondaryTags: ['trans', 'transgender'],
+    genderFilter: 't',
+    nsfwLevel: 'safe',
+    combinedVolume: 1879,
+  },
+  {
+    slug: 'petite-cams',
+    title: 'Hottest Petite Cam Models Live Now',
+    metaTitle: 'Petite Cam Models — Live Petite Cams Free',
+    metaDescription: 'Watch the hottest petite cam models streaming live. Slim and tiny performers ranked by viewers and votes. Free, updated every 30 minutes.',
+    primaryTags: ['petite'],
+    secondaryTags: ['skinny', 'slim', 'tiny', 'smalltits', 'tinytits'],
+    nsfwLevel: 'safe',
+    combinedVolume: 665,
+  },
+];
+
+// Lookup by slug for fast access
+export const CATEGORY_MAP = new Map<string, CategoryDef>(
+  CATEGORIES.map(c => [c.slug, c])
+);
+
+// Check if a model's tags match a category (OR logic — any tag match counts)
+export function modelMatchesCategory(modelTags: string[], category: CategoryDef): boolean {
+  const tagSet = new Set(modelTags.map(t => t.toLowerCase()));
+  const allCategoryTags = [...category.primaryTags, ...category.secondaryTags];
+  return allCategoryTags.some(ct => tagSet.has(ct.toLowerCase()));
+}

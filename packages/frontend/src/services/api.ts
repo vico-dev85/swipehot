@@ -1,5 +1,5 @@
 import { getSessionId, incrementCount } from "./session";
-import { getAlpha } from "./brain";
+import { getAlpha, getGenderWeights } from "./brain";
 
 // API base URL — empty string means same-origin (/api/...), set via env for external API (Railway etc.)
 const API_BASE = import.meta.env.VITE_API_URL || "";
@@ -52,6 +52,14 @@ export async function fetchNextPerformer(
   }
   if (alpha > 0) {
     params.set("alpha", alpha.toFixed(2));
+  }
+  // Send gender weights when on "all" pool (no explicit filter)
+  if (genderCode === "all") {
+    const gw = getGenderWeights();
+    if (gw) {
+      // Format: "f:0.8,m:0.05,t:0.1,c:0.05"
+      params.set("gender_weights", Object.entries(gw).map(([g, w]) => `${g}:${w}`).join(","));
+    }
   }
 
   const res = await fetch(`${API_BASE}/api/pool-next.php?${params}`);

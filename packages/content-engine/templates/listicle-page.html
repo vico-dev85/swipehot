@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {{metaTags}}
+    {{schemaMarkup}}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+      body {
+        background: #000;
+        color: #e0e0e0;
+        font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
+      a { color: #FE2C55; text-decoration: none; transition: color 0.2s; }
+      a:hover { color: #ff5a7d; }
+
+      img { max-width: 100%; height: auto; }
+
+      /* ---- Navigation ---- */
+      .nav {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        background: rgba(0, 0, 0, 0.85);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      }
+      .nav-inner {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 0 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 56px;
+      }
+      .nav-brand {
+        font-size: 20px;
+        font-weight: 800;
+        color: #FE2C55;
+        letter-spacing: -0.3px;
+      }
+      .nav-brand:hover { color: #FE2C55; }
+      .nav-links {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+      }
+      .nav-links a {
+        color: #999;
+        font-size: 14px;
+        font-weight: 500;
+      }
+      .nav-links a:hover { color: #fff; }
+
+      /* ---- Container ---- */
+      .container {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 0 16px;
+      }
+
+      /* ---- Breadcrumb ---- */
+      .breadcrumb {
+        padding: 16px 0 0;
+        font-size: 13px;
+        color: #555;
+      }
+      .breadcrumb a { color: #777; }
+      .breadcrumb a:hover { color: #bbb; }
+      .breadcrumb-sep { margin: 0 6px; color: #444; }
+
+      /* ---- Hero ---- */
+      .hero {
+        padding: 32px 0 24px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        margin-bottom: 24px;
+      }
+      .hero h1 {
+        font-size: 28px;
+        font-weight: 800;
+        color: #fff;
+        line-height: 1.2;
+        margin-bottom: 10px;
+        letter-spacing: -0.5px;
+      }
+      .hero-meta {
+        font-size: 14px;
+        color: #888;
+        margin-bottom: 16px;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px;
+      }
+      .hero-meta .live-dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        background: #00F891;
+        border-radius: 50%;
+        animation: pulse-dot 2s ease-in-out infinite;
+      }
+      @keyframes pulse-dot {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.4; }
+      }
+      .hero-description {
+        font-size: 15px;
+        color: #aaa;
+        line-height: 1.7;
+        max-width: 700px;
+      }
+
+      /* ---- Model Card List ---- */
+      .model-list {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        padding-bottom: 32px;
+      }
+
+      /* ---- Single Model Card ---- */
+      .model-card {
+        display: grid;
+        grid-template-columns: 48px 1fr;
+        gap: 0;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 16px;
+        overflow: hidden;
+        transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+      }
+      .model-card:hover {
+        transform: translateY(-2px);
+        border-color: rgba(255, 255, 255, 0.12);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      }
+
+      /* Rank column */
+      .card-rank {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        font-weight: 800;
+        color: #444;
+        background: rgba(255, 255, 255, 0.02);
+        border-right: 1px solid rgba(255, 255, 255, 0.04);
+        min-height: 100%;
+      }
+
+      /* Top-3 rank badges */
+      .model-card[data-rank="1"] .card-rank {
+        color: #FFD740;
+        background: rgba(255, 215, 64, 0.06);
+        text-shadow: 0 0 12px rgba(255, 215, 64, 0.3);
+      }
+      .model-card[data-rank="2"] .card-rank {
+        color: #C0C0C0;
+        background: rgba(192, 192, 192, 0.05);
+        text-shadow: 0 0 12px rgba(192, 192, 192, 0.2);
+      }
+      .model-card[data-rank="3"] .card-rank {
+        color: #CD7F32;
+        background: rgba(205, 127, 50, 0.06);
+        text-shadow: 0 0 12px rgba(205, 127, 50, 0.2);
+      }
+
+      /* Card body (right of rank) */
+      .card-body {
+        display: flex;
+        flex-direction: column;
+        padding: 14px;
+        gap: 12px;
+      }
+
+      /* Media + info layout */
+      .card-content {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      /* Thumbnail / embed area */
+      .card-media {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        border-radius: 10px;
+        overflow: hidden;
+        background: #111;
+        cursor: pointer;
+        flex-shrink: 0;
+      }
+      .card-media img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+        transition: opacity 0.3s;
+      }
+      .card-media iframe {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        border: none;
+      }
+
+      /* Play button overlay */
+      .play-btn {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 52px;
+        height: 52px;
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: transform 0.2s, background 0.2s;
+        z-index: 3;
+      }
+      .play-btn:hover {
+        transform: translate(-50%, -50%) scale(1.1);
+        background: rgba(254, 44, 85, 0.7);
+        border-color: rgba(254, 44, 85, 0.5);
+      }
+      .play-btn svg {
+        width: 22px;
+        height: 22px;
+        fill: #fff;
+        margin-left: 3px;
+      }
+      .play-btn.hidden { display: none; }
+
+      /* Badges on the thumbnail */
+      .card-badges {
+        position: absolute;
+        top: 8px;
+        left: 8px;
+        display: flex;
+        gap: 6px;
+        z-index: 2;
+      }
+      .badge-live {
+        background: #00F891;
+        color: #000;
+        font-size: 10px;
+        font-weight: 700;
+        padding: 2px 7px;
+        border-radius: 4px;
+        letter-spacing: 0.6px;
+        text-transform: uppercase;
+        line-height: 1.4;
+      }
+      .badge-viewers {
+        background: rgba(0, 0, 0, 0.65);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+        color: #ddd;
+        font-size: 10px;
+        font-weight: 600;
+        padding: 2px 7px;
+        border-radius: 4px;
+        font-variant-numeric: tabular-nums;
+        line-height: 1.4;
+      }
+      .badge-viewers svg {
+        width: 10px;
+        height: 10px;
+        fill: #ddd;
+        vertical-align: -1px;
+        margin-right: 3px;
+      }
+      .badge-offline {
+        background: #333;
+        color: #888;
+        font-size: 10px;
+        font-weight: 700;
+        padding: 2px 7px;
+        border-radius: 4px;
+        letter-spacing: 0.6px;
+        text-transform: uppercase;
+        line-height: 1.4;
+      }
+
+      /* Model info block */
+      .card-info {
+        flex: 1;
+        min-width: 0;
+      }
+      .card-name-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 4px;
+      }
+      .card-name {
+        font-size: 17px;
+        font-weight: 700;
+        color: #fff;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .card-name:hover { color: #FE2C55; }
+      .card-details {
+        font-size: 12px;
+        color: #777;
+        margin-bottom: 6px;
+      }
+      .card-bio {
+        font-size: 13px;
+        color: #aaa;
+        line-height: 1.55;
+        margin-bottom: 8px;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      .card-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin-bottom: 10px;
+      }
+      .card-tag {
+        background: rgba(254, 44, 85, 0.1);
+        color: #FE2C55;
+        font-size: 11px;
+        font-weight: 500;
+        padding: 2px 10px;
+        border-radius: 999px;
+        text-transform: lowercase;
+        white-space: nowrap;
+      }
+
+      /* Bottom row: CTA + vote */
+      .card-actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .card-cta {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: #FE2C55;
+        color: #fff;
+        font-size: 13px;
+        font-weight: 700;
+        padding: 9px 20px;
+        border-radius: 999px;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        transition: background 0.2s, transform 0.15s;
+        white-space: nowrap;
+      }
+      .card-cta:hover {
+        background: #e0264d;
+        color: #fff;
+        transform: scale(1.03);
+      }
+      .card-cta svg {
+        width: 14px;
+        height: 14px;
+        fill: currentColor;
+      }
+
+      /* Vote button */
+      .vote-btn {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 6px 12px;
+        border-radius: 10px;
+        transition: background 0.15s;
+        color: #777;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .vote-btn:hover { background: rgba(255, 255, 255, 0.05); }
+      .vote-btn svg {
+        width: 22px;
+        height: 22px;
+        transition: transform 0.2s ease, fill 0.2s ease;
+      }
+      .vote-btn:hover svg { transform: scale(1.15); }
+      .vote-btn .vote-count {
+        font-size: 11px;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+        transition: color 0.2s;
+      }
+      .vote-btn.voted svg {
+        fill: #FE2C55;
+        transform: scale(1.1);
+      }
+      .vote-btn.voted .vote-count { color: #FE2C55; }
+      .vote-btn.voted { cursor: default; }
+      .vote-btn.voting svg {
+        animation: vote-pop 0.4s ease;
+      }
+      @keyframes vote-pop {
+        0% { transform: scale(1); }
+        30% { transform: scale(1.4); }
+        60% { transform: scale(0.9); }
+        100% { transform: scale(1.1); }
+      }
+
+      /* Score line */
+      .card-score {
+        font-size: 11px;
+        color: #555;
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+
+      /* ---- Related categories ---- */
+      .related-section {
+        padding: 32px 0;
+        border-top: 1px solid rgba(255, 255, 255, 0.06);
+      }
+      .related-section h2 {
+        font-size: 20px;
+        font-weight: 700;
+        color: #fff;
+        margin-bottom: 16px;
+      }
+      .related-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+      }
+      .related-link {
+        display: block;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 12px;
+        padding: 14px 16px;
+        color: #ccc;
+        font-size: 14px;
+        font-weight: 500;
+        transition: background 0.2s, border-color 0.2s, transform 0.15s;
+      }
+      .related-link:hover {
+        background: rgba(255, 255, 255, 0.07);
+        border-color: rgba(255, 255, 255, 0.12);
+        color: #fff;
+        transform: translateY(-1px);
+      }
+
+      /* ---- Roulette CTA section ---- */
+      .roulette-section {
+        text-align: center;
+        padding: 40px 16px;
+        border-top: 1px solid rgba(255, 255, 255, 0.06);
+      }
+      .roulette-section p {
+        font-size: 16px;
+        color: #999;
+        margin-bottom: 16px;
+      }
+      .roulette-btn {
+        display: inline-block;
+        background: #FE2C55;
+        color: #fff;
+        font-size: 15px;
+        font-weight: 700;
+        padding: 14px 36px;
+        border-radius: 999px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        transition: background 0.2s, transform 0.15s;
+      }
+      .roulette-btn:hover {
+        background: #e0264d;
+        color: #fff;
+        transform: scale(1.04);
+      }
+
+      /* ---- Footer ---- */
+      .footer {
+        border-top: 1px solid rgba(255, 255, 255, 0.06);
+        padding: 24px 0;
+        text-align: center;
+      }
+      .footer-links {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 16px;
+        margin-bottom: 10px;
+      }
+      .footer-links a {
+        color: #555;
+        font-size: 12px;
+        font-weight: 500;
+      }
+      .footer-links a:hover { color: #888; }
+      .footer-copy {
+        font-size: 11px;
+        color: #333;
+      }
+
+      /* ---- Desktop layout ---- */
+      @media (min-width: 640px) {
+        .hero h1 { font-size: 34px; }
+        .hero-description { font-size: 16px; }
+
+        .card-content {
+          flex-direction: row;
+          gap: 16px;
+        }
+        .card-media {
+          width: 260px;
+          min-width: 260px;
+          aspect-ratio: 16 / 9;
+        }
+        .card-bio {
+          -webkit-line-clamp: 4;
+        }
+        .related-grid {
+          grid-template-columns: repeat(3, 1fr);
+        }
+      }
+
+      @media (min-width: 768px) {
+        .card-media {
+          width: 300px;
+          min-width: 300px;
+        }
+        .card-rank { font-size: 22px; }
+        .card-name { font-size: 18px; }
+        .related-grid {
+          grid-template-columns: repeat(4, 1fr);
+        }
+      }
+
+      @media (min-width: 1024px) {
+        .hero { padding: 40px 0 28px; }
+        .hero h1 { font-size: 38px; }
+      }
+    </style>
+</head>
+<body>
+  <!-- Navigation -->
+  <nav class="nav" role="navigation" aria-label="Main navigation">
+    <div class="nav-inner">
+      <a href="/" class="nav-brand">{{siteName}}</a>
+      <div class="nav-links">
+        <a href="/">Roulette</a>
+        <a href="/categories/">Categories</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container">
+    <!-- Breadcrumb -->
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a href="/">Home</a>
+      <span class="breadcrumb-sep">&rsaquo;</span>
+      <a href="/categories/">Categories</a>
+      <span class="breadcrumb-sep">&rsaquo;</span>
+      <span>{{pageTitle}}</span>
+    </nav>
+
+    <!-- Hero -->
+    <header class="hero">
+      <h1>{{pageTitle}}</h1>
+      <div class="hero-meta">
+        <span class="live-dot"></span>
+        <span>{{totalModels}} models ranked live</span>
+        <span>&middot;</span>
+        <span>Updated {{lastUpdated}}</span>
+      </div>
+      <p class="hero-description">{{categoryDescription}}</p>
+    </header>
+
+    <!-- Model Cards -->
+    <section class="model-list" aria-label="Ranked model list">
+      {{modelCards}}
+    </section>
+
+    <!-- Related Categories -->
+    <section class="related-section">
+      <h2>Explore More Categories</h2>
+      <div class="related-grid">
+        {{relatedPages}}
+      </div>
+    </section>
+
+    <!-- Roulette CTA -->
+    <section class="roulette-section">
+      <p>Not sure who to watch? Let us pick for you.</p>
+      <a href="/" class="roulette-btn">Try the Roulette</a>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="footer-links">
+        <a href="/">Roulette</a>
+        <a href="/blog/">Blog</a>
+        <a href="/legal/privacy.html">Privacy</a>
+        <a href="/legal/terms.html">Terms</a>
+        <a href="/legal/2257.html">18 U.S.C. 2257</a>
+      </div>
+      <div class="footer-copy">&copy; {{year}} {{siteName}}. All rights reserved.</div>
+    </footer>
+  </div>
+
+  <script>
+    (function() {
+      'use strict';
+
+      // =========================================================
+      // Visitor token (persistent anonymous ID for voting)
+      // =========================================================
+      function getVisitorToken() {
+        var key = 'visitor_token';
+        var token = localStorage.getItem(key);
+        if (token) return token;
+        var chars = 'abcdef0123456789';
+        token = '';
+        for (var i = 0; i < 32; i++) {
+          token += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        localStorage.setItem(key, token);
+        return token;
+      }
+
+      var visitorToken = getVisitorToken();
+      var categorySlug = '{{categorySlug}}';
+
+      // =========================================================
+      // Voted-state persistence
+      // =========================================================
+      var VOTE_STORAGE_KEY = 'votes_' + categorySlug;
+
+      function getVotedSet() {
+        try {
+          var raw = localStorage.getItem(VOTE_STORAGE_KEY);
+          return raw ? JSON.parse(raw) : {};
+        } catch (e) {
+          return {};
+        }
+      }
+
+      function saveVoted(username) {
+        var set = getVotedSet();
+        set[username] = true;
+        try {
+          localStorage.setItem(VOTE_STORAGE_KEY, JSON.stringify(set));
+        } catch (e) { /* storage full, no-op */ }
+      }
+
+      function hasVoted(username) {
+        return !!getVotedSet()[username];
+      }
+
+      // =========================================================
+      // Restore voted state from localStorage on page load
+      // =========================================================
+      function restoreVotedStates() {
+        var buttons = document.querySelectorAll('.vote-btn[data-username]');
+        for (var i = 0; i < buttons.length; i++) {
+          var btn = buttons[i];
+          var username = btn.getAttribute('data-username');
+          if (hasVoted(username)) {
+            btn.classList.add('voted');
+            btn.setAttribute('aria-pressed', 'true');
+          }
+        }
+      }
+
+      // =========================================================
+      // Upvote handler
+      // =========================================================
+      function handleVote(btn) {
+        var username = btn.getAttribute('data-username');
+        if (!username || btn.classList.contains('voted') || btn.classList.contains('voting')) return;
+
+        btn.classList.add('voting');
+
+        var countEl = btn.querySelector('.vote-count');
+        var currentCount = parseInt(countEl.textContent, 10) || 0;
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/vote.php', true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.onreadystatechange = function() {
+          if (xhr.readyState !== 4) return;
+          btn.classList.remove('voting');
+
+          if (xhr.status >= 200 && xhr.status < 300) {
+            btn.classList.add('voted');
+            btn.setAttribute('aria-pressed', 'true');
+            countEl.textContent = currentCount + 1;
+            saveVoted(username);
+          } else {
+            // Failed -- revert visual state
+            countEl.textContent = currentCount;
+          }
+        };
+        xhr.onerror = function() {
+          btn.classList.remove('voting');
+        };
+        xhr.send(JSON.stringify({
+          model_username: username,
+          category_slug: categorySlug,
+          visitor_token: visitorToken
+        }));
+      }
+
+      // =========================================================
+      // Screenshot-to-embed swap (only one embed active at a time)
+      // =========================================================
+      var activeEmbed = null; // { container, img, iframe, playBtn }
+
+      function closeActiveEmbed() {
+        if (!activeEmbed) return;
+        if (activeEmbed.iframe && activeEmbed.iframe.parentNode) {
+          activeEmbed.iframe.parentNode.removeChild(activeEmbed.iframe);
+        }
+        activeEmbed.img.style.display = '';
+        activeEmbed.playBtn.classList.remove('hidden');
+        activeEmbed = null;
+      }
+
+      function openEmbed(mediaEl) {
+        var username = mediaEl.getAttribute('data-username');
+        if (!username) return;
+
+        var img = mediaEl.querySelector('img');
+        var playBtn = mediaEl.querySelector('.play-btn');
+        if (!img || !playBtn) return;
+
+        // Close any currently-open embed first
+        closeActiveEmbed();
+
+        // Lock dimensions to prevent layout shift
+        var rect = mediaEl.getBoundingClientRect();
+        mediaEl.style.width = rect.width + 'px';
+        mediaEl.style.height = rect.height + 'px';
+
+        // Hide image and play button
+        img.style.display = 'none';
+        playBtn.classList.add('hidden');
+
+        // Create and insert iframe
+        var iframe = document.createElement('iframe');
+        iframe.src = 'https://{{whitelabelDomain}}/embed/' + encodeURIComponent(username)
+          + '/?campaign={{affiliateCampaign}}&tour={{affiliateTour}}&track={{affiliateTrack}}'
+          + '&disable_sound=1&embed_video_only=1&mobileRedirect=auto';
+        iframe.setAttribute('allowfullscreen', '');
+        iframe.setAttribute('loading', 'lazy');
+        iframe.title = username + ' live cam';
+        mediaEl.appendChild(iframe);
+
+        activeEmbed = {
+          container: mediaEl,
+          img: img,
+          iframe: iframe,
+          playBtn: playBtn
+        };
+      }
+
+      // =========================================================
+      // Event delegation
+      // =========================================================
+      document.addEventListener('click', function(e) {
+        // Vote button
+        var voteBtn = e.target.closest('.vote-btn');
+        if (voteBtn) {
+          e.preventDefault();
+          handleVote(voteBtn);
+          return;
+        }
+
+        // Play button or card-media click (but not if clicking inside an iframe)
+        var mediaEl = e.target.closest('.card-media[data-username]');
+        if (mediaEl && e.target.tagName !== 'IFRAME') {
+          // If this is the active embed container, do nothing (let embed handle clicks)
+          if (activeEmbed && activeEmbed.container === mediaEl) return;
+          e.preventDefault();
+          openEmbed(mediaEl);
+          return;
+        }
+      });
+
+      // =========================================================
+      // Init
+      // =========================================================
+      restoreVotedStates();
+    })();
+  </script>
+</body>
+</html>

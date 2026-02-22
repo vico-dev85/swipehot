@@ -7,6 +7,7 @@ import { createIframeManager, type IframeManager } from "@/services/iframe-manag
 import {
   updatePreferences,
   getPreferredTags,
+  getGenderWeights,
   isBored,
   hasShownFirstLikeFeedback,
   markFirstLikeFeedbackShown,
@@ -96,7 +97,7 @@ const RouletteView = () => {
     (action: "skip" | "like" | "cta") => {
       if (!current) return;
       const watchSeconds = getWatchSeconds();
-      updatePreferences(current.tags, action, watchSeconds, current.age, current.country);
+      updatePreferences(current.tags, action, watchSeconds, current.gender, current.age, current.country);
     },
     [current, getWatchSeconds]
   );

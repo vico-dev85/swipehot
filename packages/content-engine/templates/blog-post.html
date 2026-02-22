@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {{metaTags}}
+    {{schemaMarkup}}
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        /* RESET */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+        body {
+            background: #000;
+            color: #d4d4d4;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 16px;
+            line-height: 1.7;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* TYPOGRAPHY */
+        h1, h2, h3 { color: #fff; line-height: 1.3; }
+        h1 { font-size: clamp(26px, 5vw, 38px); font-weight: 800; letter-spacing: -0.02em; }
+        h2 { font-size: clamp(20px, 3.5vw, 26px); font-weight: 700; margin-top: 48px; margin-bottom: 16px; letter-spacing: -0.01em; }
+        h3 { font-size: 18px; font-weight: 600; margin-top: 28px; margin-bottom: 10px; }
+        p { margin-bottom: 16px; }
+        a { color: #FE2C55; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        strong { color: #fff; font-weight: 600; }
+        ul, ol { margin-bottom: 16px; padding-left: 24px; }
+        li { margin-bottom: 8px; }
+        li::marker { color: #FE2C55; }
+
+        /* LAYOUT */
+        .container { max-width: 760px; margin: 0 auto; padding: 0 20px; }
+
+        /* NAV */
+        .nav {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 16px 0; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 8px;
+        }
+        .nav-brand { font-size: 20px; font-weight: 800; color: #FE2C55; text-decoration: none; }
+        .nav-brand:hover { text-decoration: none; opacity: 0.9; }
+        .nav-links a { color: #888; font-size: 14px; margin-left: 20px; transition: color 0.15s; }
+        .nav-links a:hover { color: #fff; text-decoration: none; }
+
+        /* BREADCRUMB */
+        .breadcrumb { font-size: 13px; color: #666; padding: 12px 0 24px; }
+        .breadcrumb a { color: #888; }
+        .breadcrumb a:hover { color: #FE2C55; }
+        .breadcrumb span { margin: 0 6px; color: #444; }
+
+        /* HERO */
+        .hero { padding: 32px 0 16px; }
+        .hero h1 { margin-bottom: 16px; }
+        .hero-meta {
+            display: flex; flex-wrap: wrap; align-items: center; gap: 16px;
+            color: #888; font-size: 14px; margin-bottom: 32px;
+        }
+        .hero-meta .badge {
+            background: rgba(254, 44, 85, 0.15); color: #FE2C55;
+            font-size: 12px; font-weight: 600; padding: 4px 12px;
+            border-radius: 20px; text-transform: uppercase; letter-spacing: 0.04em;
+        }
+
+        /* ARTICLE BODY */
+        .article-body { padding-bottom: 32px; }
+        .article-body img {
+            max-width: 100%; height: auto; border-radius: 12px; margin: 24px 0;
+        }
+        .article-body blockquote {
+            border-left: 3px solid #FE2C55; padding: 16px 20px; margin: 24px 0;
+            background: rgba(255,255,255,0.03); border-radius: 0 12px 12px 0;
+            font-style: italic; color: #bbb;
+        }
+        .article-body table {
+            width: 100%; border-collapse: collapse; margin: 24px 0;
+            font-size: 14px;
+        }
+        .article-body th, .article-body td {
+            padding: 12px 16px; text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+        .article-body th {
+            color: #fff; font-weight: 600; font-size: 13px;
+            text-transform: uppercase; letter-spacing: 0.04em;
+        }
+        .article-body .info-box {
+            background: rgba(254, 44, 85, 0.08); border: 1px solid rgba(254, 44, 85, 0.2);
+            border-radius: 12px; padding: 20px 24px; margin: 24px 0;
+        }
+        .article-body .info-box strong { color: #FE2C55; }
+        .article-body .warning-box {
+            background: rgba(255, 215, 64, 0.08); border: 1px solid rgba(255, 215, 64, 0.2);
+            border-radius: 12px; padding: 20px 24px; margin: 24px 0;
+        }
+        .article-body .warning-box strong { color: #FFD740; }
+
+        /* FAQ ACCORDION */
+        .faq-section { margin-top: 48px; padding-top: 32px; border-top: 1px solid rgba(255,255,255,0.08); }
+        .faq-section h2 { margin-top: 0; margin-bottom: 24px; }
+        .faq-item {
+            border: 1px solid rgba(255,255,255,0.08); border-radius: 12px;
+            margin-bottom: 12px; overflow: hidden;
+            background: rgba(255,255,255,0.02);
+        }
+        .faq-q {
+            width: 100%; display: flex; align-items: center; justify-content: space-between;
+            padding: 18px 20px; background: none; border: none;
+            color: #fff; font-family: inherit; font-size: 15px; font-weight: 600;
+            cursor: pointer; text-align: left; transition: background 0.15s;
+        }
+        .faq-q:hover { background: rgba(255,255,255,0.03); }
+        .faq-arrow {
+            font-size: 12px; color: #888; transition: transform 0.25s ease;
+            flex-shrink: 0; margin-left: 16px;
+        }
+        .faq-item.open .faq-arrow { transform: rotate(180deg); }
+        .faq-a {
+            max-height: 0; overflow: hidden; transition: max-height 0.3s ease, padding 0.3s ease;
+            padding: 0 20px;
+        }
+        .faq-item.open .faq-a {
+            max-height: 500px; padding: 0 20px 18px;
+        }
+        .faq-a p { color: #aaa; font-size: 14px; line-height: 1.7; margin-bottom: 0; }
+
+        /* RELATED ARTICLES */
+        .related-section { margin-top: 48px; padding-top: 32px; border-top: 1px solid rgba(255,255,255,0.08); }
+        .related-section h2 { margin-top: 0; margin-bottom: 24px; }
+        .related-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px;
+        }
+        .related-card {
+            background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 14px; padding: 20px; transition: border-color 0.2s, transform 0.2s;
+            text-decoration: none; display: block;
+        }
+        .related-card:hover { border-color: rgba(254,44,85,0.3); transform: translateY(-2px); text-decoration: none; }
+        .related-card .related-type {
+            font-size: 11px; font-weight: 600; color: #FE2C55;
+            text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px;
+        }
+        .related-card .related-title { color: #fff; font-size: 15px; font-weight: 600; line-height: 1.4; margin-bottom: 8px; }
+        .related-card .related-desc { color: #888; font-size: 13px; line-height: 1.5; }
+
+        /* CTA SECTION */
+        .cta-section {
+            margin-top: 48px; padding: 40px 32px; text-align: center;
+            background: linear-gradient(135deg, rgba(254,44,85,0.12), rgba(0,240,255,0.06));
+            border: 1px solid rgba(254,44,85,0.2); border-radius: 20px;
+        }
+        .cta-section h2 { margin-top: 0; margin-bottom: 12px; font-size: 24px; }
+        .cta-section p { color: #aaa; margin-bottom: 24px; max-width: 480px; margin-left: auto; margin-right: auto; }
+        .cta-btn {
+            display: inline-block; padding: 14px 36px;
+            background: #FE2C55; color: #fff; font-weight: 700; font-size: 16px;
+            border-radius: 50px; text-decoration: none;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .cta-btn:hover {
+            transform: translateY(-2px); text-decoration: none;
+            box-shadow: 0 8px 24px rgba(254,44,85,0.35);
+        }
+
+        /* FOOTER */
+        .footer {
+            margin-top: 64px; padding: 32px 0;
+            border-top: 1px solid rgba(255,255,255,0.06);
+            text-align: center; color: #555; font-size: 13px;
+        }
+        .footer a { color: #666; }
+        .footer a:hover { color: #FE2C55; }
+
+        /* RESPONSIVE */
+        @media (max-width: 600px) {
+            .container { padding: 0 16px; }
+            .hero { padding: 20px 0 12px; }
+            .cta-section { padding: 28px 20px; }
+            .related-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- Nav -->
+    <nav class="nav">
+        <a href="https://{{siteDomain}}/" class="nav-brand">{{siteName}}</a>
+        <div class="nav-links">
+            <a href="https://{{siteDomain}}/">Roulette</a>
+            <a href="https://{{siteDomain}}/blog/chaturbate-token-calculator/">Tools</a>
+        </div>
+    </nav>
+
+    <!-- Breadcrumb -->
+    <div class="breadcrumb">
+        <a href="https://{{siteDomain}}/">Home</a>
+        <span>&rsaquo;</span>
+        <a href="https://{{siteDomain}}/blog/">Blog</a>
+        <span>&rsaquo;</span>
+        {{articleTitle}}
+    </div>
+
+    <!-- Hero -->
+    <header class="hero">
+        <h1>{{articleTitle}}</h1>
+        <div class="hero-meta">
+            <span class="badge">{{blogTypeLabel}}</span>
+            <span>{{publishDate}}</span>
+            <span>{{readTime}} min read</span>
+        </div>
+    </header>
+
+    <!-- Article Body -->
+    <article class="article-body">
+        {{articleContent}}
+    </article>
+
+    <!-- FAQ Section -->
+    <section class="faq-section">
+        <h2>Frequently Asked Questions</h2>
+        {{faqSection}}
+    </section>
+
+    <!-- Related Articles -->
+    {{relatedArticlesSection}}
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+        <h2>Try Live Cam Roulette</h2>
+        <p>Swipe through live performers for free. No signup needed — just instant, full-screen video.</p>
+        <a href="https://{{siteDomain}}/" class="cta-btn">Start Watching &rarr;</a>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>&copy; {{currentYear}} {{siteName}} &middot; <a href="https://{{siteDomain}}/">Home</a> &middot; <a href="https://{{siteDomain}}/blog/chaturbate-token-calculator/">Token Calculator</a></p>
+        <p style="margin-top:8px;font-size:12px;color:#444;">This site contains adult content. You must be 18+ to enter.</p>
+    </footer>
+</div>
+
+<!-- FAQ Accordion JS -->
+<script>
+document.querySelectorAll('.faq-q').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        var item = this.parentElement;
+        var wasOpen = item.classList.contains('open');
+        // Close all
+        document.querySelectorAll('.faq-item.open').forEach(function(el) {
+            el.classList.remove('open');
+            el.querySelector('.faq-q').setAttribute('aria-expanded', 'false');
+        });
+        // Toggle clicked
+        if (!wasOpen) {
+            item.classList.add('open');
+            this.setAttribute('aria-expanded', 'true');
+        }
+    });
+});
+</script>
+
+</body>
+</html>

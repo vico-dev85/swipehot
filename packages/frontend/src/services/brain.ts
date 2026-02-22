@@ -13,6 +13,8 @@ const ALPHA_RAMP = 20; // swipes to reach max alpha
 const BOREDOM_WINDOW = 10;
 const BOREDOM_SKIP_THRESHOLD = 0.7; // 70% skip rate triggers boredom
 const IMPLICIT_WEIGHT = 0.7; // age/country weighted lower than explicit tags
+const MIN_GENDER_SAMPLES = 5; // min views of a gender before computing preference
+const GENDER_WEIGHT_FLOOR = 0.05; // never fully zero-out a gender (exploration)
 
 // Known countries (same list as performer-info.ts)
 const KNOWN_COUNTRIES = new Set([
@@ -41,8 +43,16 @@ function buildSyntheticTags(age: number | null, country: string): string[] {
   return synthetic;
 }
 
+interface GenderStats {
+  views: number;
+  skips: number;       // watched < 3s
+  engaged: number;     // watched 10s+ OR liked OR CTA
+  totalWatchSec: number;
+}
+
 interface BrainState {
   preferences: Record<string, number>;
+  genderStats: Record<string, GenderStats>; // keyed by 'f','m','t','c'
   totalSwipes: number;
   lastUpdated: number;
   recentWatchTimes: number[]; // last N watch durations for boredom detection
@@ -52,10 +62,16 @@ interface BrainState {
 function loadState(): BrainState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      // Migrate: add genderStats if missing (existing users upgrading)
+      if (!parsed.genderStats) parsed.genderStats = {};
+      return parsed;
+    }
   } catch { /* corrupt data */ }
   return {
     preferences: {},
+    genderStats: {},
     totalSwipes: 0,
     lastUpdated: Date.now(),
     recentWatchTimes: [],
@@ -74,12 +90,14 @@ let state = loadState();
 /**
  * Update preferences after viewing a performer.
  * action: 'skip' | 'like' | 'cta'
+ * gender: performer's gender ('f','m','t','c')
  * age/country: structured data for synthetic tag generation (optional)
  */
 export function updatePreferences(
   tags: string[],
   action: "skip" | "like" | "cta",
   watchSeconds: number,
+  gender?: string,
   age?: number | null,
   country?: string
 ): void {
@@ -116,6 +134,18 @@ export function updatePreferences(
     state.preferences[tag] = (state.preferences[tag] || 0) + weight * IMPLICIT_WEIGHT;
   }
 
+  // Track gender engagement stats
+  if (gender && ["f", "m", "t", "c"].includes(gender)) {
+    if (!state.genderStats[gender]) {
+      state.genderStats[gender] = { views: 0, skips: 0, engaged: 0, totalWatchSec: 0 };
+    }
+    const gs = state.genderStats[gender];
+    gs.views++;
+    gs.totalWatchSec += watchSeconds;
+    if (watchSeconds < 3 && action === "skip") gs.skips++;
+    if (watchSeconds >= 10 || action === "like" || action === "cta") gs.engaged++;
+  }
+
   // Track swipe count and watch time for boredom detection
   state.totalSwipes++;
   state.recentWatchTimes.push(watchSeconds);
@@ -125,6 +155,52 @@ export function updatePreferences(
 
   state.lastUpdated = Date.now();
   saveState(state);
+}
+
+/**
+ * Get gender weights based on behavioral signals.
+ * Returns null if not enough data yet, otherwise a map like {f: 0.8, m: 0.05, t: 0.1, c: 0.05}
+ * Weights sum to ~1. Disliked genders get GENDER_WEIGHT_FLOOR (never zero — exploration).
+ */
+export function getGenderWeights(): Record<string, number> | null {
+  const genders = ["f", "m", "t", "c"];
+  const totalViews = genders.reduce((sum, g) => sum + (state.genderStats[g]?.views || 0), 0);
+
+  // Need enough total data before inferring gender preference
+  if (totalViews < MIN_GENDER_SAMPLES) return null;
+
+  // Compute engagement rate per gender (engaged / views), default to neutral 0.5
+  const scores: Record<string, number> = {};
+  for (const g of genders) {
+    const gs = state.genderStats[g];
+    if (!gs || gs.views < 2) {
+      // Not enough data for this gender — low default (exploration only)
+      scores[g] = 0.1;
+    } else {
+      const engageRate = gs.engaged / gs.views; // 0-1, higher = likes this gender
+      const skipRate = gs.skips / gs.views;      // 0-1, higher = dislikes
+      // Score: engagement rate penalized by skip rate
+      // Range roughly 0 to 1. Fast-skip-heavy gender → near 0
+      scores[g] = Math.max(0, engageRate - skipRate * 0.5);
+    }
+  }
+
+  // Normalize to weights summing to 1, with floor
+  const rawSum = genders.reduce((sum, g) => sum + scores[g], 0);
+  if (rawSum <= 0) return null; // all zero, no preference detectable
+
+  const weights: Record<string, number> = {};
+  for (const g of genders) {
+    weights[g] = Math.max(GENDER_WEIGHT_FLOOR, scores[g] / rawSum);
+  }
+
+  // Re-normalize after floor clamping, then re-enforce floor
+  const wSum = genders.reduce((sum, g) => sum + weights[g], 0);
+  for (const g of genders) {
+    weights[g] = Math.max(GENDER_WEIGHT_FLOOR, Math.round((weights[g] / wSum) * 1000) / 1000);
+  }
+
+  return weights;
 }
 
 /**

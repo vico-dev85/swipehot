@@ -97,4 +97,18 @@ function ensureTables(PDO $pdo): void {
             INDEX idx_first_seen (first_seen_date, visit_date)
         )
     ");
+
+    // Living listicles: user upvotes per model per category
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS user_votes (
+            id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            model_username VARCHAR(100) NOT NULL,
+            category_slug VARCHAR(100) NOT NULL,
+            visitor_token VARCHAR(64) NOT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uk_vote (model_username, category_slug, visitor_token),
+            INDEX idx_model_cat (model_username, category_slug),
+            INDEX idx_created (created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
 }

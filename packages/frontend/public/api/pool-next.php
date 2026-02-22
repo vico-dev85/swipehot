@@ -9,6 +9,7 @@ $sessionId = $_GET['session_id'] ?? '';
 $gender = $_GET['gender'] ?? 'all';
 $preferTagsRaw = $_GET['prefer_tags'] ?? '';
 $alpha = min(0.85, max(0, (float)($_GET['alpha'] ?? 0)));
+$genderWeightsRaw = $_GET['gender_weights'] ?? '';
 
 // Validate session ID (32-char hex)
 if (!$sessionId || !preg_match('/^[a-f0-9]{16,64}$/i', $sessionId)) {
@@ -19,6 +20,17 @@ if (!$sessionId || !preg_match('/^[a-f0-9]{16,64}$/i', $sessionId)) {
 
 // Parse preferred tags
 $preferTags = $preferTagsRaw ? array_map('trim', explode(',', strtolower($preferTagsRaw))) : [];
+
+// Parse gender weights (format: "f:0.8,m:0.05,t:0.1,c:0.05")
+$genderWeights = [];
+if ($genderWeightsRaw) {
+    foreach (explode(',', $genderWeightsRaw) as $pair) {
+        $parts = explode(':', $pair, 2);
+        if (count($parts) === 2 && in_array($parts[0], ['f','m','t','c'])) {
+            $genderWeights[$parts[0]] = max(0, min(1, (float)$parts[1]));
+        }
+    }
+}
 
 // Get cached pool
 $pool = getPool($gender);
@@ -32,7 +44,7 @@ if (empty($pool)) {
 $seen = getSeenSet($sessionId);
 
 // Select performer
-$match = selectPerformer($pool, $seen, $preferTags, $alpha);
+$match = selectPerformer($pool, $seen, $preferTags, $alpha, $genderWeights);
 
 // If all seen, force fresh pool fetch and try again
 if (!$match) {
@@ -41,7 +53,7 @@ if (!$match) {
     @unlink($cacheFile);
     $freshPool = getPool($gender);
     if (!empty($freshPool)) {
-        $match = selectPerformer($freshPool, $seen, $preferTags, $alpha);
+        $match = selectPerformer($freshPool, $seen, $preferTags, $alpha, $genderWeights);
     }
     // Still nothing? Pick random from fresh pool
     if (!$match) {

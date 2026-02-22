@@ -69,7 +69,7 @@ const Index = () => {
       ref: params.get("ref") || "",
       referrer: document.referrer || "direct",
       device: /Mobi|Android/i.test(navigator.userAgent) ? "mobile" : "desktop",
-      screen: `${screen.width}x${screen.height}`,
+      screen: `${window.screen.width}x${window.screen.height}`,
       language: navigator.language || "",
     });
     setScreen("roulette");

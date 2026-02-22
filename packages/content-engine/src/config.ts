@@ -16,15 +16,15 @@ function optional(name: string, fallback: string): string {
   return process.env[name] || fallback;
 }
 
-// Determine which API key is required based on provider
-function requireApiKey(provider: AIProvider): string {
+// Get API key for provider. Returns empty string if not set (some commands don't need AI).
+function getApiKey(provider: AIProvider): string {
   switch (provider) {
     case 'claude':
-      return required('ANTHROPIC_API_KEY');
+      return process.env.ANTHROPIC_API_KEY || '';
     case 'arli':
-      return required('ARLI_API_KEY');
+      return process.env.ARLI_API_KEY || '';
     case 'openai':
-      return required('OPENAI_API_KEY');
+      return process.env.OPENAI_API_KEY || '';
   }
 }
 
@@ -34,11 +34,11 @@ export function loadConfig(providerOverride?: AIProvider) {
     || 'arli'; // Default to ArliAI
 
   return {
-    // Brand
-    siteName: required('SITE_NAME'),
+    // Brand (defaults for local dev — override in .env for production)
+    siteName: optional('SITE_NAME', 'XCam.VIP'),
     siteTagline: optional('SITE_TAGLINE', 'Live Cam Roulette'),
-    siteDomain: required('SITE_DOMAIN'),
-    whitelabelDomain: optional('WHITELABEL_DOMAIN', `www.${process.env.SITE_DOMAIN || ''}`),
+    siteDomain: optional('SITE_DOMAIN', 'xcam.vip'),
+    whitelabelDomain: optional('WHITELABEL_DOMAIN', `www.${optional('SITE_DOMAIN', 'xcam.vip')}`),
 
     // Affiliate
     affiliateCampaign: optional('AFFILIATE_CAMPAIGN', 'roGHG'),
@@ -54,14 +54,14 @@ export function loadConfig(providerOverride?: AIProvider) {
       database: optional('MYSQL_DB', 'xcamvip'),
     },
 
-    // AI Provider
+    // AI Provider (key may be empty for non-AI commands like build-pages, status, sitemap)
     aiProvider: provider,
-    aiApiKey: requireApiKey(provider),
+    aiApiKey: getApiKey(provider),
     arliModel: optional('ARLI_MODEL', 'Mistral-Small-24B-ArliAI-RPMax-v1.1'),
     openaiModel: optional('OPENAI_MODEL', 'gpt-4o-mini'),
 
     // Keep for backwards compat (some code may reference directly)
-    anthropicApiKey: provider === 'claude' ? requireApiKey(provider) : '',
+    anthropicApiKey: provider === 'claude' ? getApiKey(provider) : '',
   };
 }
 

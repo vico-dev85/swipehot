@@ -67,9 +67,8 @@ function buildSchemaMarkup(config: Config, category: CategoryDef, models: Scored
 // Build a single model card HTML — must match listicle-page.html CSS selectors
 function buildModelCard(config: Config, model: ScoredModel, rank: number, categorySlug: string): string {
   const displayName = model.displayName || model.username.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-  const imageUrl = model.screenshotPath
-    ? `/content-data/${escAttr(model.screenshotPath)}`
-    : escAttr(model.imageUrl);
+  // Use CB API image_url (always available). Local screenshot is a filesystem path, not a web URL.
+  const imageUrl = escAttr(model.imageUrl || '');
 
   const roomUrl = `https://chaturbate.com/in/?tour=${config.affiliateTour}&campaign=${config.affiliateCampaign}&track=${config.affiliateTrack}&room=${model.username}`;
 

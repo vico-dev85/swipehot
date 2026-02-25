@@ -123,6 +123,12 @@
       }
 
       /* ---- Model Card List ---- */
+      .model-list-heading {
+        font-size: 22px;
+        font-weight: 700;
+        color: #fff;
+        margin-bottom: 20px;
+      }
       .model-list {
         display: flex;
         flex-direction: column;
@@ -441,6 +447,12 @@
         gap: 8px;
         margin-bottom: 4px;
       }
+      .card-name-heading {
+        font-size: inherit;
+        font-weight: inherit;
+        margin: 0;
+        min-width: 0;
+      }
       .card-name {
         font-size: 17px;
         font-weight: 700;
@@ -729,8 +741,11 @@
     </header>
 
     <!-- Model Cards -->
-    <section class="model-list" aria-label="Ranked model list">
-      {{modelCards}}
+    <section aria-label="Ranked model list">
+      <h2 class="model-list-heading">Top Ranked Models</h2>
+      <div class="model-list">
+        {{modelCards}}
+      </div>
     </section>
 
     <!-- Related Categories -->

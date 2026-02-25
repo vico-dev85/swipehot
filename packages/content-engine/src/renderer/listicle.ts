@@ -18,19 +18,29 @@ export interface ListiclePageData {
 }
 
 // Build the SEO meta tags block
-function buildMetaTags(config: Config, category: CategoryDef): string {
+function buildMetaTags(config: Config, category: CategoryDef, models: ScoredModel[]): string {
   const canonicalUrl = `https://${config.siteDomain}/${category.slug}/`;
+  // Use first model's thumbnail as OG image fallback
+  const ogImage = models.length > 0 && models[0].imageUrl
+    ? models[0].imageUrl
+    : `https://${config.siteDomain}/og-image.png`;
+  const now = new Date().toISOString();
   return `<title>${escHtml(category.metaTitle)} | ${escHtml(config.siteName)}</title>
     <meta name="description" content="${escAttr(category.metaDescription)}">
+    <meta name="robots" content="index, follow">
     <link rel="canonical" href="${escAttr(canonicalUrl)}">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <meta property="og:title" content="${escAttr(category.metaTitle)}">
     <meta property="og:description" content="${escAttr(category.metaDescription)}">
     <meta property="og:url" content="${escAttr(canonicalUrl)}">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="${escAttr(config.siteName)}">
-    <meta name="twitter:card" content="summary">
+    <meta property="og:image" content="${escAttr(ogImage)}">
+    <meta property="article:modified_time" content="${now}">
+    <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="${escAttr(category.metaTitle)}">
-    <meta name="twitter:description" content="${escAttr(category.metaDescription)}">`;
+    <meta name="twitter:description" content="${escAttr(category.metaDescription)}">
+    <meta name="twitter:image" content="${escAttr(ogImage)}">`;
 }
 
 // Build JSON-LD schema (ItemList + BreadcrumbList)
@@ -46,7 +56,7 @@ function buildSchemaMarkup(config: Config, category: CategoryDef, models: Scored
     itemListElement: models.slice(0, 20).map((m, i) => ({
       '@type': 'ListItem',
       position: i + 1,
-      name: m.displayName || m.username,
+      name: sanitizeDisplayName(m.displayName, m.username),
       url: `https://${config.siteDomain}/${category.slug}/#${m.username}`,
     })),
   };
@@ -66,7 +76,7 @@ function buildSchemaMarkup(config: Config, category: CategoryDef, models: Scored
 
 // Build a single model card HTML — must match listicle-page.html CSS selectors
 function buildModelCard(config: Config, model: ScoredModel, rank: number, categorySlug: string): string {
-  const displayName = model.displayName || model.username.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  const displayName = sanitizeDisplayName(model.displayName, model.username);
   // Use CB API image_url (always available). Local screenshot is a filesystem path, not a web URL.
   const imageUrl = escAttr(model.imageUrl || '');
 
@@ -110,7 +120,7 @@ function buildModelCard(config: Config, model: ScoredModel, rank: number, catego
           </div>
           <div class="card-info">
             <div class="card-name-row">
-              <a href="${escAttr(roomUrl)}" target="_blank" rel="noopener" class="card-name">${escHtml(displayName)}</a>
+              <h3 class="card-name-heading"><a href="${escAttr(roomUrl)}" target="_blank" rel="sponsored nofollow noopener" class="card-name">${escHtml(displayName)}</a></h3>
             </div>
             <div class="card-details">${metaLine}</div>
             ${bio}
@@ -118,7 +128,7 @@ function buildModelCard(config: Config, model: ScoredModel, rank: number, catego
           </div>
         </div>
         <div class="card-actions">
-          <a href="${escAttr(roomUrl)}" target="_blank" rel="noopener" class="card-cta">Watch Live <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></a>
+          <a href="${escAttr(roomUrl)}" target="_blank" rel="sponsored nofollow noopener" class="card-cta">Watch Live <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></a>
           <button class="vote-btn" data-username="${escAttr(model.username)}" data-category="${escAttr(categorySlug)}" aria-label="Upvote ${escAttr(displayName)}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
             <span class="vote-count">${model.upvotes}</span>
@@ -166,7 +176,7 @@ export async function renderListiclePage(config: Config, data: ListiclePageData)
   });
 
   const replacements: Record<string, string> = {
-    '{{metaTags}}': buildMetaTags(config, category),
+    '{{metaTags}}': buildMetaTags(config, category, models),
     '{{schemaMarkup}}': buildSchemaMarkup(config, category, models),
     '{{siteName}}': escHtml(config.siteName),
     '{{siteDomain}}': config.siteDomain,
@@ -197,4 +207,19 @@ function escHtml(s: string): string {
 
 function escAttr(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// Sanitize display names — CB models often set display_name to OnlyFans URLs, Telegram links, etc.
+// Fall back to a cleaned-up username if the display name looks spammy.
+function sanitizeDisplayName(displayName: string | undefined, username: string): string {
+  const fallback = username.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  if (!displayName) return fallback;
+  // Flag: contains URLs, is too long, or has @ / http / .com / t.me patterns
+  if (
+    displayName.length > 40 ||
+    /https?:\/\/|\.com|\.ly|t\.me|onlyfans|@\w+/i.test(displayName)
+  ) {
+    return fallback;
+  }
+  return displayName;
 }

@@ -146,10 +146,122 @@
         border-color: rgba(255, 255, 255, 0.12);
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
       }
+      /* FLIP reorder animation */
+      .model-card.flipping {
+        transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+        z-index: 10;
+      }
+      /* Glow when card moved up */
+      .model-card.moved-up {
+        border-color: rgba(0, 248, 145, 0.3);
+        box-shadow: 0 0 20px rgba(0, 248, 145, 0.08);
+      }
+      .model-card.moved-down {
+        border-color: rgba(254, 44, 85, 0.2);
+      }
+      /* Fade glow out after 3s */
+      .model-card.glow-fade {
+        transition: border-color 1.5s ease, box-shadow 1.5s ease, transform 0.2s ease;
+        border-color: rgba(255, 255, 255, 0.06);
+        box-shadow: none;
+      }
+
+      /* ---- Went offline overlay ---- */
+      .offline-overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 5;
+        border-radius: 10px;
+        opacity: 0;
+        transition: opacity 0.5s ease;
+        pointer-events: none;
+      }
+      .offline-overlay.show { opacity: 1; }
+      .offline-overlay span {
+        color: #ff4466;
+        font-size: 12px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        padding: 6px 14px;
+        background: rgba(254, 44, 85, 0.15);
+        border: 1px solid rgba(254, 44, 85, 0.3);
+        border-radius: 6px;
+      }
+      /* Card dims when offline */
+      .model-card.went-offline {
+        opacity: 0.35;
+        transition: opacity 1s ease 0.5s, transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+      }
+
+      /* ---- Came online / back online pulse ---- */
+      .model-card.came-online {
+        animation: online-pulse 1.2s ease;
+      }
+      @keyframes online-pulse {
+        0% { border-color: rgba(0, 248, 145, 0.6); box-shadow: 0 0 30px rgba(0, 248, 145, 0.15); }
+        50% { border-color: rgba(0, 248, 145, 0.4); box-shadow: 0 0 20px rgba(0, 248, 145, 0.1); }
+        100% { border-color: rgba(255, 255, 255, 0.06); box-shadow: none; }
+      }
+      .online-overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 248, 145, 0.08);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 5;
+        border-radius: 10px;
+        opacity: 0;
+        transition: opacity 0.4s ease;
+        pointer-events: none;
+      }
+      .online-overlay.show { opacity: 1; }
+      .online-overlay span {
+        color: #00F891;
+        font-size: 12px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        padding: 6px 14px;
+        background: rgba(0, 248, 145, 0.12);
+        border: 1px solid rgba(0, 248, 145, 0.3);
+        border-radius: 6px;
+      }
+
+      /* ---- New entry slide-in ---- */
+      .model-card.new-entry {
+        animation: slide-in 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+      }
+      @keyframes slide-in {
+        0% { opacity: 0; transform: translateY(30px) scale(0.97); }
+        100% { opacity: 1; transform: translateY(0) scale(1); }
+      }
+      .badge-new-entry {
+        background: #00F0FF;
+        color: #000;
+        font-size: 10px;
+        font-weight: 700;
+        padding: 2px 7px;
+        border-radius: 4px;
+        letter-spacing: 0.6px;
+        text-transform: uppercase;
+        line-height: 1.4;
+        animation: new-badge-fade 4s ease forwards;
+      }
+      @keyframes new-badge-fade {
+        0%, 70% { opacity: 1; }
+        100% { opacity: 0; }
+      }
 
       /* Rank column */
       .card-rank {
         display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
         font-size: 20px;
@@ -158,7 +270,22 @@
         background: rgba(255, 255, 255, 0.02);
         border-right: 1px solid rgba(255, 255, 255, 0.04);
         min-height: 100%;
+        gap: 2px;
+        padding: 4px 0;
       }
+      .rank-number { line-height: 1; }
+      .rank-change {
+        font-size: 10px;
+        font-weight: 700;
+        line-height: 1;
+        letter-spacing: 0.3px;
+        opacity: 0;
+        transition: opacity 0.4s;
+      }
+      .rank-change.visible { opacity: 1; }
+      .rank-change.up { color: #00F891; }
+      .rank-change.down { color: #FE2C55; }
+      .rank-change.same { color: #555; font-size: 9px; }
 
       /* Top-3 rank badges */
       .model-card[data-rank="1"] .card-rank {
@@ -813,9 +940,361 @@
       });
 
       // =========================================================
+      // Live leaderboard — reorder + animate ranks in real-time
+      // =========================================================
+      var REFRESH_INTERVAL = 60000;
+      var THUMB_REFRESH_INTERVAL = 90000;
+
+      // State tracking (exposed on window for debugging)
+      var liveViewers = window.liveViewers = {};
+      var liveOnline = window.liveOnline = {};
+      var prevOnline = window.prevOnline = {};
+      var knownUsernames = window.knownUsernames = {};
+
+      // Initialize from static page data
+      (function initLiveData() {
+        var cards = document.querySelectorAll('.model-card');
+        for (var i = 0; i < cards.length; i++) {
+          var media = cards[i].querySelector('.card-media[data-username]');
+          if (!media) continue;
+          var name = media.getAttribute('data-username');
+          var isLive = !!cards[i].querySelector('.badge-live');
+          var viewerEl = cards[i].querySelector('.badge-viewers');
+          var viewers = 0;
+          if (viewerEl) {
+            var txt = viewerEl.textContent.replace(/[^0-9]/g, '');
+            viewers = parseInt(txt, 10) || 0;
+          }
+          liveViewers[name] = viewers;
+          liveOnline[name] = isLive;
+          prevOnline[name] = isLive;
+          knownUsernames[name] = true;
+        }
+      })();
+
+      function getAllUsernames() {
+        var cards = document.querySelectorAll('.card-media[data-username]');
+        var names = [];
+        for (var i = 0; i < cards.length; i++) {
+          names.push(cards[i].getAttribute('data-username'));
+        }
+        return names;
+      }
+
+      function updateLiveStatus() {
+        var names = getAllUsernames();
+        if (names.length === 0) return;
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', '/api/live-check.php?usernames=' + encodeURIComponent(names.join(',')), true);
+        xhr.onreadystatechange = function() {
+          if (xhr.readyState !== 4 || xhr.status !== 200) return;
+          try {
+            var data = JSON.parse(xhr.responseText);
+            applyLiveData(data);
+            reorderCards();
+          } catch (e) {}
+        };
+        xhr.send();
+      }
+
+      // ---- Overlay helpers ----
+      function showOverlay(mediaEl, type, text) {
+        // Remove any existing overlays
+        var old = mediaEl.querySelector('.offline-overlay, .online-overlay');
+        if (old) old.parentNode.removeChild(old);
+
+        var overlay = document.createElement('div');
+        overlay.className = type + '-overlay';
+        overlay.innerHTML = '<span>' + text + '</span>';
+        mediaEl.style.position = 'relative';
+        mediaEl.appendChild(overlay);
+
+        // Trigger show after paint
+        requestAnimationFrame(function() {
+          requestAnimationFrame(function() {
+            overlay.classList.add('show');
+          });
+        });
+
+        return overlay;
+      }
+
+      function removeOverlay(mediaEl, delay) {
+        setTimeout(function() {
+          var ov = mediaEl.querySelector('.offline-overlay.show, .online-overlay.show');
+          if (ov) {
+            ov.classList.remove('show');
+            setTimeout(function() { if (ov.parentNode) ov.parentNode.removeChild(ov); }, 600);
+          }
+        }, delay);
+      }
+
+      function applyLiveData(data) {
+        // --- Process models that are now ONLINE ---
+        if (data.online) {
+          for (var name in data.online) {
+            var info = data.online[name];
+            var wasOffline = prevOnline[name] === false;
+            liveViewers[name] = info.viewers || 0;
+            liveOnline[name] = true;
+
+            var card = document.querySelector('.card-media[data-username="' + name + '"]');
+            if (!card) continue;
+            var article = card.closest('.model-card');
+            if (!article) continue;
+
+            // Update viewer badge
+            var viewerBadge = card.querySelector('.badge-viewers');
+            if (viewerBadge) {
+              var svg = viewerBadge.querySelector('svg');
+              var svgHtml = svg ? svg.outerHTML : '';
+              viewerBadge.innerHTML = svgHtml + Number(info.viewers).toLocaleString();
+              viewerBadge.style.display = '';
+            }
+
+            // Swap badge to LIVE
+            var offBadge = card.querySelector('.badge-offline');
+            if (offBadge) {
+              offBadge.className = 'badge-live';
+              offBadge.textContent = 'LIVE';
+            }
+
+            // --- CAME ONLINE animation ---
+            if (wasOffline) {
+              article.classList.remove('went-offline');
+              article.style.opacity = '';
+              article.classList.add('came-online');
+              showOverlay(card, 'online', 'BACK ONLINE');
+              removeOverlay(card, 2500);
+              setTimeout(function(a) {
+                return function() { a.classList.remove('came-online'); };
+              }(article), 2000);
+            } else {
+              article.style.opacity = '';
+            }
+          }
+        }
+
+        // --- Process models that are now OFFLINE ---
+        if (data.offline) {
+          for (var i = 0; i < data.offline.length; i++) {
+            var offName = data.offline[i];
+            var wasOnline = prevOnline[offName] === true || prevOnline[offName] === undefined;
+            liveViewers[offName] = 0;
+            liveOnline[offName] = false;
+
+            var offCard = document.querySelector('.card-media[data-username="' + offName + '"]');
+            if (!offCard) continue;
+            var offArticle = offCard.closest('.model-card');
+            if (!offArticle) continue;
+
+            // Swap badge to OFFLINE
+            var liveBadge = offCard.querySelector('.badge-live');
+            if (liveBadge) {
+              liveBadge.className = 'badge-offline';
+              liveBadge.textContent = 'OFFLINE';
+            }
+            var vBadge = offCard.querySelector('.badge-viewers');
+            if (vBadge) vBadge.style.display = 'none';
+
+            // --- WENT OFFLINE animation ---
+            if (wasOnline) {
+              showOverlay(offCard, 'offline', 'WENT OFFLINE');
+              // Show overlay for 2.5s, then dim card
+              (function(article, mediaEl) {
+                setTimeout(function() {
+                  article.classList.add('went-offline');
+                }, 800);
+                removeOverlay(mediaEl, 3000);
+              })(offArticle, offCard);
+            } else {
+              offArticle.classList.add('went-offline');
+            }
+          }
+        }
+
+        // Save current state as previous for next tick
+        var allNames = getAllUsernames();
+        for (var j = 0; j < allNames.length; j++) {
+          prevOnline[allNames[j]] = liveOnline[allNames[j]];
+        }
+      }
+
+      // ---- FLIP reorder animation ----
+      function reorderCards() {
+        var list = document.querySelector('.model-list');
+        if (!list) return;
+        var cards = Array.prototype.slice.call(list.querySelectorAll('.model-card'));
+        if (cards.length < 2) return;
+
+        // 1. Record current rank per username
+        var oldRanks = {};
+        for (var i = 0; i < cards.length; i++) {
+          var uname = getCardUsername(cards[i]);
+          if (uname) oldRanks[uname] = i;
+        }
+
+        // 2. Sort: online by viewers desc → offline by previous rank
+        var sorted = cards.slice().sort(function(a, b) {
+          var uA = getCardUsername(a), uB = getCardUsername(b);
+          var onA = liveOnline[uA] !== false, onB = liveOnline[uB] !== false;
+          if (onA && !onB) return -1;
+          if (!onA && onB) return 1;
+          if (onA && onB) return (liveViewers[uB] || 0) - (liveViewers[uA] || 0);
+          return (oldRanks[uA] || 0) - (oldRanks[uB] || 0);
+        });
+
+        // 3. Check if order changed
+        var changed = false;
+        for (var j = 0; j < sorted.length; j++) {
+          if (sorted[j] !== cards[j]) { changed = true; break; }
+        }
+        if (!changed) {
+          updateRankIndicators(cards, oldRanks, oldRanks);
+          return;
+        }
+
+        // 4. FLIP: record old positions
+        var firstRects = {};
+        for (var k = 0; k < cards.length; k++) {
+          var u = getCardUsername(cards[k]);
+          firstRects[u] = cards[k].getBoundingClientRect();
+        }
+
+        // 5. Reorder DOM
+        for (var m = 0; m < sorted.length; m++) {
+          list.appendChild(sorted[m]);
+        }
+
+        // 6. New rank map
+        var newRanks = {};
+        for (var n = 0; n < sorted.length; n++) {
+          var un = getCardUsername(sorted[n]);
+          if (un) newRanks[un] = n;
+        }
+
+        // 7. FLIP: invert + play
+        for (var p = 0; p < sorted.length; p++) {
+          var card = sorted[p];
+          var username = getCardUsername(card);
+          if (!username || !firstRects[username]) continue;
+
+          var lastRect = card.getBoundingClientRect();
+          var deltaY = firstRects[username].top - lastRect.top;
+          if (Math.abs(deltaY) < 2) continue;
+
+          card.style.transform = 'translateY(' + deltaY + 'px)';
+          card.classList.remove('flipping');
+        }
+
+        void list.offsetHeight; // force reflow
+
+        for (var q = 0; q < sorted.length; q++) {
+          sorted[q].classList.add('flipping');
+          sorted[q].style.transform = '';
+        }
+
+        // 8. Rank numbers + arrows
+        updateRankIndicators(sorted, oldRanks, newRanks);
+
+        // 9. Glow effect on moved cards
+        for (var r = 0; r < sorted.length; r++) {
+          (function(card, uname) {
+            var oldR = oldRanks[uname];
+            var newR = newRanks[uname];
+            if (oldR === undefined || newR === undefined || oldR === newR) return;
+            var delta = oldR - newR;
+            if (delta > 0) card.classList.add('moved-up');
+            else card.classList.add('moved-down');
+
+            setTimeout(function() {
+              card.classList.remove('flipping');
+              card.classList.add('glow-fade');
+            }, 700);
+            setTimeout(function() {
+              card.classList.remove('moved-up', 'moved-down', 'glow-fade');
+            }, 3000);
+          })(sorted[r], getCardUsername(sorted[r]));
+        }
+
+        // 10. Top-3 data-rank
+        for (var s = 0; s < sorted.length; s++) {
+          if (s < 3) sorted[s].setAttribute('data-rank', String(s + 1));
+          else sorted[s].removeAttribute('data-rank');
+        }
+      }
+
+      function updateRankIndicators(cards, oldRanks, newRanks) {
+        for (var i = 0; i < cards.length; i++) {
+          var card = cards[i];
+          var username = getCardUsername(card);
+          var rankEl = card.querySelector('.card-rank');
+          if (!rankEl || !username) continue;
+
+          var newPos = (newRanks[username] !== undefined) ? newRanks[username] : i;
+
+          var numEl = rankEl.querySelector('.rank-number');
+          if (!numEl) {
+            var currentText = rankEl.textContent.trim();
+            rankEl.innerHTML = '<span class="rank-number">' + currentText + '</span><span class="rank-change"></span>';
+            numEl = rankEl.querySelector('.rank-number');
+          }
+          numEl.textContent = '#' + (newPos + 1);
+
+          var changeEl = rankEl.querySelector('.rank-change');
+          if (!changeEl) continue;
+
+          var oldPos = oldRanks[username];
+          if (oldPos === undefined || oldPos === newPos) {
+            changeEl.className = 'rank-change same visible';
+            changeEl.textContent = '—';
+          } else {
+            var delta = oldPos - newPos;
+            if (delta > 0) {
+              changeEl.className = 'rank-change up visible';
+              changeEl.innerHTML = '&#9650;' + delta;
+            } else {
+              changeEl.className = 'rank-change down visible';
+              changeEl.innerHTML = '&#9660;' + Math.abs(delta);
+            }
+          }
+        }
+      }
+
+      function getCardUsername(cardEl) {
+        var media = cardEl.querySelector('.card-media[data-username]');
+        return media ? media.getAttribute('data-username') : null;
+      }
+
+      // Refresh thumbnails with cache-buster
+      function refreshThumbnails() {
+        var images = document.querySelectorAll('.card-media img');
+        var ts = Date.now();
+        for (var i = 0; i < images.length; i++) {
+          var src = images[i].getAttribute('src');
+          if (!src || src.indexOf('mmcdn.com') === -1) continue;
+          src = src.replace(/[?&]_t=\d+/, '');
+          images[i].setAttribute('src', src + (src.indexOf('?') > -1 ? '&' : '?') + '_t=' + ts);
+        }
+      }
+
+      // =========================================================
       // Init
       // =========================================================
       restoreVotedStates();
+
+      // Start live refresh after 30s
+      setTimeout(function() {
+        updateLiveStatus();
+        setInterval(updateLiveStatus, REFRESH_INTERVAL);
+      }, 30000);
+
+      // Start thumbnail refresh after 60s
+      setTimeout(function() {
+        refreshThumbnails();
+        setInterval(refreshThumbnails, THUMB_REFRESH_INTERVAL);
+      }, 60000);
     })();
   </script>
 </body>

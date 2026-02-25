@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>LJ Minimal Embed Test</title>
+<style>*{margin:0;padding:0;background:#111;color:#fff;font-family:monospace;}</style>
+</head>
+<body>
+
+<!-- SOUND TESTS: trying different param combos to enable audio -->
+
+<h3 style="padding:10px;background:#222;">Test 1: BASELINE — no sound params (currently muted)</h3>
+<iframe id="t1"
+  src="https://atwmcd.com/live-stream/?site=jsm&psid=vicoawe&pstool=202_1&psprogram=revs&forcedPerformers[0]=&vp[showChat]=&vp[chatAutoHide]=1&vp[showCallToAction]=&vp[showPerformerName]=&vp[showPerformerStatus]=&subAffId=t1&categoryName=girl&embedTool=1"
+  style="width:640px;height:360px;border:1px solid #444;"
+  allow="autoplay; encrypted-media; fullscreen; camera; microphone; autoplay *"
+  allowfullscreen frameborder="0"
+></iframe>
+
+<h3 style="padding:10px;background:#222;">Test 2: vp[showSound]=1</h3>
+<iframe id="t2"
+  src="https://atwmcd.com/live-stream/?site=jsm&psid=vicoawe&pstool=202_1&psprogram=revs&forcedPerformers[0]=&vp[showChat]=&vp[chatAutoHide]=1&vp[showSound]=1&vp[showCallToAction]=&vp[showPerformerName]=&vp[showPerformerStatus]=&subAffId=t2&categoryName=girl&embedTool=1"
+  style="width:640px;height:360px;border:1px solid #444;"
+  allow="autoplay; encrypted-media; fullscreen; camera; microphone; autoplay *"
+  allowfullscreen frameborder="0"
+></iframe>
+
+<h3 style="padding:10px;background:#222;">Test 3: vp[enableSound]=1</h3>
+<iframe id="t3"
+  src="https://atwmcd.com/live-stream/?site=jsm&psid=vicoawe&pstool=202_1&psprogram=revs&forcedPerformers[0]=&vp[showChat]=&vp[chatAutoHide]=1&vp[enableSound]=1&vp[showCallToAction]=&vp[showPerformerName]=&vp[showPerformerStatus]=&subAffId=t3&categoryName=girl&embedTool=1"
+  style="width:640px;height:360px;border:1px solid #444;"
+  allow="autoplay; encrypted-media; fullscreen; camera; microphone; autoplay *"
+  allowfullscreen frameborder="0"
+></iframe>
+
+<h3 style="padding:10px;background:#222;">Test 4: vp[sound]=1 & vp[autoUnmute]=1</h3>
+<iframe id="t4"
+  src="https://atwmcd.com/live-stream/?site=jsm&psid=vicoawe&pstool=202_1&psprogram=revs&forcedPerformers[0]=&vp[showChat]=1&vp[chatAutoHide]=1&vp[sound]=1&vp[autoUnmute]=1&vp[showCallToAction]=&vp[showPerformerName]=1&vp[showPerformerStatus]=1&subAffId=t4&categoryName=girl&embedTool=1"
+  style="width:640px;height:360px;border:1px solid #444;"
+  allow="autoplay; encrypted-media; fullscreen; camera; microphone; autoplay *"
+  allowfullscreen frameborder="0"
+></iframe>
+
+<h3 style="padding:10px;background:#222;">Test 5: Chat ON + all UI visible (maybe sound comes with chat?)</h3>
+<iframe id="t5"
+  src="https://atwmcd.com/live-stream/?site=jsm&psid=vicoawe&pstool=202_1&psprogram=revs&forcedPerformers[0]=&vp[showChat]=1&vp[chatAutoHide]=&vp[showCallToAction]=1&vp[showPerformerName]=1&vp[showPerformerStatus]=1&subAffId=t5&categoryName=girl&embedTool=1"
+  style="width:640px;height:360px;border:1px solid #444;"
+  allow="autoplay; encrypted-media; fullscreen; camera; microphone; autoplay *"
+  allowfullscreen frameborder="0"
+></iframe>
+
+<h3 style="padding:10px;background:#222;">Test 6: vp[muted]=0 & vp[volume]=100</h3>
+<iframe id="t6"
+  src="https://atwmcd.com/live-stream/?site=jsm&psid=vicoawe&pstool=202_1&psprogram=revs&forcedPerformers[0]=&vp[showChat]=1&vp[muted]=0&vp[volume]=100&vp[showCallToAction]=&vp[showPerformerName]=1&vp[showPerformerStatus]=1&subAffId=t6&categoryName=girl&embedTool=1"
+  style="width:640px;height:360px;border:1px solid #444;"
+  allow="autoplay; encrypted-media; fullscreen; camera; microphone; autoplay *"
+  allowfullscreen frameborder="0"
+></iframe>
+
+<br>
+
+<!-- Debug -->
+<div id="debug" style="padding:10px;font-size:12px;color:#0f0;max-height:500px;overflow:auto;background:#000;border:1px solid #333;margin:10px;"></div>
+
+<script>
+function log(msg) {
+  const d = document.getElementById('debug');
+  d.innerHTML += `[${new Date().toLocaleTimeString()}] ${msg}<br>`;
+  console.log(msg);
+}
+
+// Listen for postMessages
+window.addEventListener('message', (e) => {
+  if (e.origin === window.location.origin) return;
+  let d;
+  try { d = typeof e.data === 'string' ? e.data.substring(0,400) : JSON.stringify(e.data).substring(0,400); }
+  catch(err) { d = String(e.data).substring(0,300); }
+  log(`MSG from ${e.origin}: ${d}`);
+});
+
+log('=== SOUND TEST PAGE ===');
+log('6 embeds with different sound params. Check which one has audio!');
+log('T1: baseline (no sound params)');
+log('T2: vp[showSound]=1');
+log('T3: vp[enableSound]=1');
+log('T4: vp[sound]=1 + vp[autoUnmute]=1');
+log('T5: chat ON + all UI visible');
+log('T6: vp[muted]=0 + vp[volume]=100');
+log('Click inside each embed to interact — browser autoplay policy may require a click to unmute');
+</script>
+</body>
+</html>

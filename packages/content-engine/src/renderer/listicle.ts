@@ -87,7 +87,12 @@ function buildModelCard(config: Config, model: ScoredModel, rank: number, catego
   if (model.numFollowers > 0) metaItems.push(`${model.numFollowers.toLocaleString()} followers`);
   const metaLine = metaItems.join(' &middot; ');
 
-  const bio = model.bioCached ? `<p class="card-bio">${escHtml(model.bioCached)}</p>` : '';
+  // Room subject = unique SEO text + shows what model is doing right now
+  const roomSubject = model.roomSubject || '';
+  const roomSubjectHtml = roomSubject.length > 5
+    ? `<p class="card-bio">${escHtml(roomSubject)}</p>`
+    : '';
+  const bio = model.bioCached ? `<p class="card-bio">${escHtml(model.bioCached)}</p>` : roomSubjectHtml;
 
   // data-rank attribute drives top-3 CSS styling
   const dataRank = rank <= 3 ? ` data-rank="${rank}"` : '';

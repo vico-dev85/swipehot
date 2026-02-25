@@ -30,7 +30,7 @@ const CB_API_BASE = 'https://chaturbate.com/api/public/affiliates/onlinerooms/';
 // Fetch all currently online rooms (up to `limit`).
 export async function fetchOnlineRooms(
   config: Config,
-  opts: { gender?: string; limit?: number; offset?: number } = {}
+  opts: { gender?: string; tag?: string; limit?: number; offset?: number } = {}
 ): Promise<CBRoom[]> {
   const params = new URLSearchParams({
     wm: config.affiliateCampaign,
@@ -40,6 +40,7 @@ export async function fetchOnlineRooms(
   });
   if (opts.offset) params.set('offset', String(opts.offset));
   if (opts.gender) params.set('gender', opts.gender);
+  if (opts.tag) params.set('tag', opts.tag);
 
   const url = `${CB_API_BASE}?${params}`;
   const res = await fetch(url, {

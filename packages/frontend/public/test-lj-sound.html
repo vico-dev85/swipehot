@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>LJ Sound Persistence Test</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:#000;color:#fff;font-family:monospace;font-size:13px;}
+  iframe{border:1px solid #333;}
+  .controls{padding:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  button{padding:8px 16px;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-size:13px;}
+  .btn-next{background:#FE2C55;color:#fff;}
+  .btn-msg{background:#00F0FF;color:#000;}
+  .btn-alt{background:#FFD740;color:#000;}
+  #log{padding:10px;color:#0f0;max-height:300px;overflow:auto;background:#111;border-top:1px solid #333;}
+</style>
+</head>
+<body>
+
+<div class="controls">
+  <b>Sound Persistence Test</b> —
+  <span id="status">Loading first performer...</span>
+</div>
+
+<div class="controls">
+  <button class="btn-next" onclick="swapPerformer()">SWAP PERFORMER (test if unmute persists)</button>
+  <button class="btn-msg" onclick="tryUnmute()">Try postMessage unmute</button>
+  <button class="btn-alt" onclick="tryUnmute2()">Try postMessage unmute (alt)</button>
+  <button class="btn-alt" onclick="inspectFrame()">Inspect iframe</button>
+</div>
+
+<!-- Single iframe — we swap src to test if unmute state persists -->
+<iframe id="player"
+  style="width:100%;height:60vh;"
+  allow="autoplay; encrypted-media; fullscreen; camera; microphone; autoplay *"
+  allowfullscreen frameborder="0"
+></iframe>
+
+<div id="log"></div>
+
+<script>
+const PSID = 'vicoawe';
+const player = document.getElementById('player');
+const statusEl = document.getElementById('status');
+let performers = [];
+let idx = 0;
+
+function log(msg) {
+  const el = document.getElementById('log');
+  el.innerHTML += `[${new Date().toLocaleTimeString()}] ${msg}<br>`;
+  el.scrollTop = el.scrollHeight;
+  console.log(msg);
+}
+
+function buildUrl(name, cat) {
+  return `https://atwmcd.com/live-stream/?site=jsm&psid=${PSID}&pstool=202_1&psprogram=revs&forcedPerformers[0]=${encodeURIComponent(name)}&vp[showChat]=0&vp[chatAutoHide]=1&vp[showCallToAction]=0&vp[showPerformerName]=0&vp[showPerformerStatus]=0&subAffId=soundtest&categoryName=${encodeURIComponent(cat)}&embedTool=1`;
+}
+
+// Load performers
+fetch('/api/livejasmin-pool.php?category=girl&count=50&status_filter=free_chat')
+  .then(r => r.json())
+  .then(data => {
+    performers = data.performers || [];
+    log(`Loaded ${performers.length} free_chat performers`);
+    if (performers.length > 0) {
+      loadPerformer(0);
+    }
+  });
+
+function loadPerformer(i) {
+  if (i >= performers.length) { log('End of pool'); return; }
+  idx = i;
+  const p = performers[i];
+  const url = buildUrl(p.name, p.category || 'girl');
+  player.src = url;
+  statusEl.textContent = `#${i+1}/${performers.length}: ${p.name} (${p.status})`;
+  log(`Loaded: ${p.name} — UNMUTE the player, then click SWAP to test if sound persists`);
+}
+
+function swapPerformer() {
+  log(`--- SWAPPING from ${performers[idx]?.name || '?'} ---`);
+  log('If you had sound, check if the NEXT performer also has sound automatically');
+  loadPerformer(idx + 1);
+}
+
+// ========== postMessage unmute attempts ==========
+function tryUnmute() {
+  log('Sending postMessage unmute attempts to iframe...');
+  const win = player.contentWindow;
+  const origin = '*';
+
+  // Try various common postMessage formats
+  const messages = [
+    { type: 'unmute' },
+    { action: 'unmute' },
+    { command: 'unmute' },
+    { type: 'setVolume', volume: 1 },
+    { type: 'setVolume', value: 100 },
+    { action: 'setVolume', volume: 1 },
+    { method: 'unmute' },
+    { method: 'setVolume', value: 1 },
+    'unmute',
+    'setVolume:1',
+    JSON.stringify({ type: 'unmute' }),
+    JSON.stringify({ action: 'unmute' }),
+    JSON.stringify({ command: 'setVolume', value: 100 }),
+    // AWE-specific guesses
+    JSON.stringify({ awe: { action: 'unmute' } }),
+    JSON.stringify({ playerCommand: 'unmute' }),
+    JSON.stringify({ type: 'player', action: 'unmute' }),
+  ];
+
+  messages.forEach((msg, i) => {
+    try {
+      win.postMessage(msg, origin);
+      log(`  sent[${i}]: ${typeof msg === 'string' ? msg : JSON.stringify(msg)}`);
+    } catch(e) {
+      log(`  err[${i}]: ${e.message}`);
+    }
+  });
+}
+
+function tryUnmute2() {
+  log('Trying alternate unmute approaches...');
+  const win = player.contentWindow;
+
+  // Try dispatching click event on the iframe (won't work cross-origin but log it)
+  try {
+    player.click();
+    log('  Clicked iframe element');
+  } catch(e) { log('  Click failed: ' + e.message); }
+
+  // Try focus
+  try {
+    player.focus();
+    log('  Focused iframe');
+  } catch(e) { log('  Focus failed: ' + e.message); }
+
+  // Try with specific target origins
+  ['https://atwmcd.com', 'https://www.livejasmin.com', 'https://ecdwm.com'].forEach(o => {
+    try {
+      win.postMessage({ type: 'unmute' }, o);
+      win.postMessage(JSON.stringify({ type: 'unmute' }), o);
+      log(`  Sent unmute to ${o}`);
+    } catch(e) { log(`  ${o} failed: ${e.message}`); }
+  });
+}
+
+function inspectFrame() {
+  log('=== IFRAME INSPECTION ===');
+  log(`src: ${player.src}`);
+  log(`dimensions: ${player.offsetWidth}x${player.offsetHeight}`);
+
+  try {
+    log(`contentWindow: ${player.contentWindow ? 'exists' : 'null'}`);
+    // This will fail cross-origin but let's see the error
+    log(`contentDocument: ${player.contentDocument ? 'accessible' : 'null'}`);
+  } catch(e) {
+    log(`Cross-origin blocked: ${e.message}`);
+  }
+
+  // Check what origin messages come FROM
+  log('Listening for any messages for 10 seconds...');
+}
+
+// Listen for ALL messages
+window.addEventListener('message', (e) => {
+  let d;
+  try { d = typeof e.data === 'string' ? e.data.substring(0,500) : JSON.stringify(e.data).substring(0,500); }
+  catch(err) { d = String(e.data).substring(0,300); }
+  log(`MSG [${e.origin}]: ${d}`);
+});
+
+log('=== SOUND PERSISTENCE TEST ===');
+log('1. Wait for embed to load');
+log('2. Click UNMUTE button inside the embed player');
+log('3. Click SWAP PERFORMER');
+log('4. Check: does the new performer have sound automatically?');
+log('');
+log('Also try the postMessage buttons to attempt programmatic unmute');
+</script>
+</body>
+</html>

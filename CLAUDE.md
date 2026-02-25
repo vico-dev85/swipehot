@@ -8,6 +8,8 @@ Custom-built: TypeScript monorepo, React SPA roulette, PHP production API, stati
 
 **Brand: SwipeHot** — deploying to **swipe.hot**. White-label architecture — only `.env` and `_config.php` change per domain.
 
+**Dual provider:** Chaturbate (muted embeds, personalization) + Streamate (sound in free chat, simpler pool). Streamate integration is in test phase — standalone files, doesn't touch Chaturbate code.
+
 | Domain | Role |
 |---|---|
 | **swipe.hot** | Roulette app, API, content pages, dashboard |
@@ -19,6 +21,9 @@ Custom-built: TypeScript monorepo, React SPA roulette, PHP production API, stati
 
 | Key | Value |
 |---|---|
+### Chaturbate
+| Key | Value |
+|---|---|
 | Campaign | `roGHG` |
 | Tour | `9oGW` |
 | Track | `swipehot-roulette` |
@@ -26,6 +31,15 @@ Custom-built: TypeScript monorepo, React SPA roulette, PHP production API, stati
 | CTA (room) | `https://chaturbate.com/in/?tour=9oGW&campaign=roGHG&track={track}&room={username}` |
 
 **CRITICAL:** `/embed/{username}/` = embeddable iframe src (200). `/in/` = 302 redirect — NEVER use in iframes. Always use white label domain for embeds.
+
+### Streamate
+| Key | Value |
+|---|---|
+| AFNO | `2-11174.888` |
+| Embed | `https://hybridclient.naiadsystems.com/purecam?performer={name}&widescreen=true` |
+| CTA (room) | `https://streamate.com/cam/{name}?AFNO=2-11174.888` |
+
+**Key difference:** Streamate embeds have **sound enabled by default** (huge UX advantage over muted Chaturbate). This also means **no dual-iframe preloading** — hidden iframe still plays audio.
 
 ---
 
@@ -40,6 +54,55 @@ Params: `wm` (required), `client_ip`, `limit` (1-500), `offset` (0-2500+), `gend
 Key room fields: `tags[]`, `gender`, `num_users`, `num_followers`, `is_hd`, `age`, `seconds_online`, `room_subject`, `image_url`, `display_name`, `slug`, `spoken_languages`, `country`
 
 Limitations: `tag` param = AND only (no OR); no similar rooms API; poll-only (no events); online rooms only.
+
+---
+
+## Streamate API (Test Phase)
+
+**Why Streamate:** Sound in free chat. Chaturbate embeds are muted — users must click through for audio. Streamate plays audio immediately in the iframe, which is a massive engagement advantage.
+
+### SMLive XML API
+```
+POST http://affiliate.streamate.com/SMLive/SMLResult.xml
+Content-Type: text/xml
+```
+Server-side only (Streamate blocks CORS from browser). Returns XML with live performers. Gender mapping: `f`→`f`, `m`→`m`, `t`→`tm2f`, `c`→`mf`, `all`→`f,ff,m,mm,mf,tm2f`.
+
+**Critical limitation:** `<StreamType>live</StreamType>` returns ALL performers marked "live" — including those in private, exclusive, gold shows, or on break. There is NO API filter for "public free chat only".
+
+### Black Screen Problem & Manifest Verification
+
+Performers in private/exclusive/gold shows return a black screen with text overlay (e.g. "I'm in an Exclusive 1-on-1 show", "I'm taking a short break", "I'm currently performing live..." = actually in paid show). Working public performers show video directly with NO text overlay.
+
+**Best solution found: Manifest server verification (`verify=1`)**
+```
+GET https://manifest-server.naiadsystems.com/live/s:{username}.json?last=load&format=mp4-hls
+```
+- HTTP 200 = performer is in public free chat (stream available)
+- Non-200 = private/offline/exclusive/break → skip
+
+Implementation in `streamate-pool.php`: when `?verify=1`, fetches 3x requested count from SMLive API, checks each performer against manifest server in parallel via `curl_multi`, returns only verified-public performers. Adds ~1-2s latency but dramatically reduces black screens.
+
+**Pool freshness strategy:** 60-second cache TTL + seen-set per session. Pool must be refreshed in background without interrupting user's current stream. Short cache = fresh data, seen-set = no repeats.
+
+### Additional Filters
+- **PerfFlag bitmask:** `0x00100000` = Gold Show (filtered out server-side), `0x10000000` = HD, `0x00000800` = Widescreen
+- **`<FreeChatSort />`** in XML query prioritizes free-chat performers in API response ordering
+
+### Streamate Test Files
+| File | Purpose |
+|---|---|
+| `public/api/streamate-pool.php` | PHP proxy: SMLive API + manifest verification + cache + seen-set |
+| `public/test-streamate.html` | Standalone test page: single iframe, verify toggle, gender filter, event log |
+
+### Known Limitations
+- **No preloading:** Sound auto-plays on hidden iframes → dual audio. Single iframe only.
+- **No postMessage events:** Streamate purecam iframe has no documented events for stream-end/offline detection.
+- **API returns stale data:** SMLive API can return performers who went private seconds ago → manifest verification is essential.
+- **No personalization yet:** Streamate pool is random (no tags/scoring like Chaturbate). Future: add brain integration.
+
+### API Docs Reference
+PDF documentation in `assistant/stremate/` — sparse, key info extracted above.
 
 ---
 
@@ -93,7 +156,9 @@ xcamvip/
 │   │       │   ├── stats.php       ← GET analytics summary
 │   │       │   ├── config.php      ← GET public frontend config
 │   │       │   ├── vote.php        ← POST listicle upvotes
-│   │       │   └── postback.php    ← CB conversion postback receiver
+│   │       │   ├── postback.php    ← CB conversion postback receiver
+│   │       │   └── streamate-pool.php ← Streamate API proxy + manifest verification
+│   │       ├── test-streamate.html ← Standalone Streamate roulette test page
 │   │       ├── admin/              ← Dashboard PHP files
 │   │       ├── models/             ← Pre-rendered model page HTML
 │   │       └── blog/               ← Pre-rendered blog post HTML
@@ -141,6 +206,9 @@ Files in `packages/frontend/public/api/`, served directly by nginx + php-fpm.
 | `/api/config.php` | GET | Public frontend config (CTA text, A/B tests) |
 | `/api/vote.php` | POST | Listicle upvotes (model_username, category_slug, visitor_token) |
 | `/api/postback.php` | GET | Chaturbate conversion postback receiver |
+| `/api/streamate-pool.php` | GET | Streamate proxy: SMLive API + manifest verify. Params: `gender`, `count`, `verify`, `session_id` |
+| `/api/livejasmin-pool.php` | GET | LiveJasmin proxy: AWEmpire API + country ban filter. Params: `category`, `count`, `session_id`, `status_filter`, `extended` |
+| `/api/live-check.php` | GET | Listicle live status check. Reads pool cache, returns online/offline for given usernames. Params: `usernames` (comma-separated, max 50) |
 
 **Key details:**
 - Seen-set: file-based per session (500 cap → trims to 400, 2h TTL)
@@ -196,6 +264,59 @@ Managed via dashboard → MySQL `ab_tests` table → `config.php` → frontend `
 **Content engine tables** (auto-created by content-engine `db.ts`): `models`, `keywords`, `pipeline_runs`, `user_votes`, `daily_snapshots`, `page_builds`
 
 Tables auto-create on first request. See `_db.php` and `packages/content-engine/src/db.ts` for full schemas.
+
+---
+
+## Listicle Freshness Strategy
+
+**Problem:** Static HTML pages go stale — models shown as "LIVE" may be offline within minutes.
+
+**Solution: Hybrid static + live.** HTML is for SEO. JavaScript makes it live for users.
+
+| Layer | What | Frequency |
+|---|---|---|
+| **Static HTML rebuild** | Cron re-generates 22 pages from DB | Every 15-30 min |
+| **CB thumbnail CDN** | `thumb.live.mmcdn.com/ri/{username}.jpg` auto-updates | ~60s (CB's CDN) |
+| **JS thumbnail refresh** | Cache-bust `?_t=timestamp` on img src | Every 90s |
+| **JS live status check** | `GET /api/live-check.php?usernames=...` | Every 60s |
+| **JS offline handling** | Dim card, swap LIVE→OFFLINE badge, hide viewer count | On status response |
+
+**How it works:**
+1. Googlebot crawls static HTML (full SEO content, schema markup)
+2. User loads page → sees static content immediately
+3. After 30s: JS calls `/api/live-check.php` with all usernames on page
+4. API reads pool cache (zero extra CB API calls) → returns online/offline map
+5. JS updates badges, dims offline models, refreshes thumbnails
+6. Repeats every 60s
+
+**`/api/live-check.php`** — Lightweight status endpoint. Reads `pool_{gender}.json` cache files (same ones `_pool.php` writes). No CB API calls. Returns `{ online: { user: { viewers, image_url } }, offline: ["user2"], cache_age: 45 }`.
+
+### Listicle Scoring (v2)
+
+```
+score = (is_online × 1000)
+      + log10(viewers) × 200        ← logarithmic, prevents domination
+      + log10(followers) × 50       ← quality/popularity signal
+      + (upvotes_decayed × 3)       ← community votes, 7-day decay
+      + (avg_viewers_7d × 0.3)      ← consistency
+      + (is_new × 200)              ← newcomer boost
+      + (tag_relevance × 150)       ← category tag match fraction
+      + (subject_relevance × 50)    ← room subject keyword match
+      + streaming_bonus (50/100)    ← 30min/1hr+ online
+      + manual_boost                ← from data/boosts.json
+```
+
+**Manual boost file:** `packages/content-engine/data/boosts.json`
+```json
+{ "username": 500, "another_model": -200 }
+```
+
+**Room subject** displayed on model cards — unique SEO text from each model's current session.
+
+**Collect modes:**
+- `--count 1500` — general top performers
+- `--tag indian` — targeted tag pull
+- `--fill-categories` — pulls 500 per category tag (all 22 categories)
 
 ---
 
@@ -309,7 +430,7 @@ server {
 
 ## Key Technical Patterns
 
-**Dual iframe system:** Two permanent iframes, never create/destroy. Recycle via `about:blank` + rAF. `opacity:0` for hiding. Preload next while current plays → instant swipe transitions.
+**Dual iframe system (Chaturbate only):** Two permanent iframes, never create/destroy. Recycle via `about:blank` + rAF. `opacity:0` for hiding. Preload next while current plays → instant swipe transitions. **Not possible with Streamate** — sound auto-plays on hidden iframes, causing dual audio.
 
 **Click-blocker overlay:** Invisible div over iframes prevents navigation away from affiliate tracking.
 
@@ -337,6 +458,8 @@ cd packages/frontend && npm run dev  # Vite proxies /api/* to localhost:3001
 
 ## Build Status — ALL CODE COMPLETE
 
-Phases 0-9 (roulette app) ✓ | Dashboard MVP ✓ | Content engine (listicles + blog + model pages) ✓ | 56K keywords processed ✓ | 12 research papers ✓ | Token calculator page ✓
+Phases 0-9 (roulette app) ✓ | Dashboard MVP ✓ | Content engine (listicles + blog + model pages) ✓ | 56K keywords processed ✓ | 12 research papers ✓ | Token calculator page ✓ | Streamate integration (test phase) ✓
 
 **Next: Deploy to swipe.hot** — point DNS to server, set up .env + _config.php, install Node.js, run `collect` + `build-pages`, configure nginx, set up cron. See `memory/content-engine-plan.md` for full checklist.
+
+**Streamate next steps:** Integrate into main roulette SPA (provider toggle or mixed pool), background pool refresh without interrupting current stream, add personalization/brain support for Streamate performers.

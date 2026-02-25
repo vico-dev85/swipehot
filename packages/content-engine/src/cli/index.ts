@@ -44,7 +44,7 @@ import { Command } from 'commander';
 import { readFile } from 'node:fs/promises';
 import { loadConfig, type AIProvider } from '../config.js';
 import { initDb, query, execute, closeDb } from '../db.js';
-import { getTopModels, downloadScreenshot, type CBRoom } from '../services/chaturbate.js';
+import { getTopModels, fetchOnlineRooms, downloadScreenshot, type CBRoom } from '../services/chaturbate.js';
 import { generateModelPage, generateBatch } from '../generators/model-page.js';
 import { generateMiniBio } from '../services/claude.js';
 import { generateSitemap } from '../seo/sitemap.js';
@@ -262,6 +262,9 @@ program
   .command('collect')
   .description('Fetch online models, store data, download screenshots, generate mini-bios. Run via cron.')
   .option('--count <n>', 'Models to fetch per run', '1000')
+  .option('--tag <tag>', 'Filter by CB tag (e.g. asian, indian, ebony)')
+  .option('--gender <g>', 'Filter by gender: f, m, t, c')
+  .option('--fill-categories', 'Auto-collect for all thin categories (< 20 models)')
   .option('--screenshots', 'Download model screenshots locally', false)
   .option('--bios', 'Generate 50-80 word mini-bios for models missing them', false)
   .option('--bio-batch <n>', 'Max mini-bios to generate per run (to control API costs)', '50')
@@ -275,10 +278,67 @@ program
     }
 
     const count = parseInt(opts.count, 10);
-    console.log(`[collect] Fetching up to ${count} online models...`);
+    let models: Awaited<ReturnType<typeof getTopModels>>;
 
-    const models = await getTopModels(config, count);
-    console.log(`[collect] Got ${models.length} online models from CB API`);
+    if (opts.fillCategories) {
+      // Pull 500 per category using each category's own tags + gender filters
+      const { CATEGORIES } = await import('../categories.js');
+      const seen = new Set<string>();
+      models = [];
+
+      // First: general top-500 pool (covers popular models across all categories)
+      console.log(`[collect] === Fill All Categories (500 per category) ===\n`);
+      const general = await getTopModels(config, 500);
+      for (const m of general) { if (!seen.has(m.username)) { seen.add(m.username); models.push(m); } }
+      console.log(`  General pool: ${general.length} models`);
+
+      // Then: targeted pull for each category
+      for (const cat of CATEGORIES) {
+        const tags = [...cat.primaryTags, ...cat.secondaryTags];
+
+        // Gender-based categories (gay, trans, couple): pull by gender
+        if (cat.genderFilter) {
+          try {
+            const rooms = await fetchOnlineRooms(config, { gender: cat.genderFilter, limit: 500 });
+            let added = 0;
+            for (const m of rooms) { if (!seen.has(m.username)) { seen.add(m.username); models.push(m); added++; } }
+            console.log(`  ${cat.slug}: gender=${cat.genderFilter} → ${rooms.length} from API, ${added} new`);
+          } catch (err) {
+            console.warn(`  ${cat.slug}: gender pull failed — ${(err as Error).message}`);
+          }
+        }
+
+        // Tag-based pulls: pull 500 for each primary tag, then key secondary tags
+        for (const tag of tags) {
+          try {
+            const rooms = await fetchOnlineRooms(config, { tag, limit: 500 });
+            let added = 0;
+            for (const m of rooms) { if (!seen.has(m.username)) { seen.add(m.username); models.push(m); added++; } }
+            console.log(`  ${cat.slug}: tag="${tag}" → ${rooms.length} from API, ${added} new`);
+          } catch (err) {
+            console.warn(`  ${cat.slug}: tag="${tag}" failed — ${(err as Error).message}`);
+          }
+        }
+      }
+      console.log(`\n[collect] Total unique models: ${models.length}`);
+    } else if (opts.tag) {
+      // Single tag targeted pull
+      console.log(`[collect] Fetching tag="${opts.tag}" (up to ${count})...`);
+      models = [];
+      for (const offset of [0, 500, 1000]) {
+        try {
+          const rooms = await fetchOnlineRooms(config, { tag: opts.tag, gender: opts.gender, limit: 500, offset });
+          models.push(...rooms);
+          if (rooms.length < 500) break;
+        } catch { break; }
+      }
+      models = models.slice(0, count);
+      console.log(`[collect] Got ${models.length} models with tag "${opts.tag}"`);
+    } else {
+      console.log(`[collect] Fetching up to ${count} online models...`);
+      models = await getTopModels(config, count);
+      console.log(`[collect] Got ${models.length} online models from CB API`);
+    }
 
     const outputDir = opts.output || join(PKG_ROOT, '..', 'frontend', 'public', 'content-data');
 
@@ -325,16 +385,17 @@ program
 
       // Upsert into models table with new listicle columns
       await execute(
-        `INSERT INTO models (model_name, chaturbate_username, display_name, tags, is_currently_online, last_seen_online_at, num_followers)
-         VALUES (?, ?, ?, ?, 1, NOW(), ?)
+        `INSERT INTO models (model_name, chaturbate_username, display_name, gender, tags, is_currently_online, last_seen_online_at, num_followers)
+         VALUES (?, ?, ?, ?, ?, 1, NOW(), ?)
          ON DUPLICATE KEY UPDATE
            display_name = VALUES(display_name),
+           gender = VALUES(gender),
            tags = VALUES(tags),
            is_currently_online = 1,
            last_seen_online_at = NOW(),
            num_followers = VALUES(num_followers),
            updated_at = NOW()`,
-        [m.username, m.username, m.display_name, JSON.stringify(m.tags), m.num_followers]
+        [m.username, m.username, m.display_name, m.gender || null, JSON.stringify(m.tags), m.num_followers]
       );
 
       // Upsert daily snapshot (accumulate viewer stats for 7-day average)

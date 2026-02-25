@@ -1,0 +1,5 @@
+{
+  "_comment": "Manual ranking boosts. Add usernames with a number (positive = boost up, negative = push down). Example: 500 = strong boost, 200 = moderate, -500 = bury it.",
+  "amilia4u": 500,
+  "marry_cordy": 300
+}

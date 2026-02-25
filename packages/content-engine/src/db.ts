@@ -12,6 +12,7 @@ const TABLES_SQL = [
     model_name VARCHAR(100) UNIQUE NOT NULL,
     chaturbate_username VARCHAR(100) NOT NULL,
     display_name VARCHAR(200),
+    gender CHAR(1) NULL,
     bio TEXT,
     bio_cached TEXT NULL,
     bio_generated_at DATETIME NULL,
@@ -154,6 +155,8 @@ export async function initDb(config: Config): Promise<boolean> {
       "ALTER TABLE models ADD COLUMN IF NOT EXISTS avg_viewers_7d FLOAT DEFAULT 0 AFTER num_followers",
       "ALTER TABLE models ADD COLUMN IF NOT EXISTS screenshot_local_path VARCHAR(500) NULL AFTER avg_viewers_7d",
       "ALTER TABLE models ADD COLUMN IF NOT EXISTS screenshot_updated_at DATETIME NULL AFTER screenshot_local_path",
+      "ALTER TABLE models ADD COLUMN gender CHAR(1) NULL AFTER display_name",
+      "ALTER TABLE models ADD INDEX idx_gender (gender)",
     ];
     for (const sql of modelMigrations) {
       await pool.query(sql).catch(() => {});

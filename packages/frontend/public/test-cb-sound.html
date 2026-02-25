@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Chaturbate Sound Test</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:#000;color:#fff;font-family:monospace;font-size:13px;padding:10px;}
+  iframe{border:1px solid #333;margin-bottom:10px;}
+  h3{padding:8px 0;color:#aaa;}
+  #status{padding:10px;color:#FFD740;font-size:14px;}
+  .test-row{margin-bottom:20px;}
+</style>
+</head>
+<body>
+
+<h2 style="color:#FE2C55;padding:10px 0;">Chaturbate Embed Sound Tests</h2>
+<div id="status">Enter a performer name...</div>
+<div id="tests"></div>
+
+<script>
+const WL = 'chaturbate.com';
+const CAMPAIGN = 'roGHG';
+const TOUR = '9oGW';
+
+const name = prompt('Enter a live Chaturbate username:');
+(() => {
+    if (!name) {
+      document.getElementById('status').textContent = 'No performer found';
+      return;
+    }
+
+    document.getElementById('status').textContent = 'Testing with: ' + name;
+
+    const tests = [
+      {
+        title: 'Test 1: YOUR CURRENT — disable_sound=1 & embed_video_only=1 (muted, no controls)',
+        src: `https://${WL}/embed/${name}/?campaign=${CAMPAIGN}&tour=${TOUR}&track=soundtest&disable_sound=1&embed_video_only=1&mobileRedirect=auto`
+      },
+      {
+        title: 'Test 2: disable_sound=0 & embed_video_only=1 (sound enabled, video only)',
+        src: `https://${WL}/embed/${name}/?campaign=${CAMPAIGN}&tour=${TOUR}&track=soundtest&disable_sound=0&embed_video_only=1&mobileRedirect=auto`
+      },
+      {
+        title: 'Test 3: NO disable_sound param & embed_video_only=1',
+        src: `https://${WL}/embed/${name}/?campaign=${CAMPAIGN}&tour=${TOUR}&track=soundtest&embed_video_only=1&mobileRedirect=auto`
+      },
+      {
+        title: 'Test 4: disable_sound=0 & NO embed_video_only (full player with controls)',
+        src: `https://${WL}/embed/${name}/?campaign=${CAMPAIGN}&tour=${TOUR}&track=soundtest&disable_sound=0&mobileRedirect=auto`
+      },
+      {
+        title: 'Test 5: NO disable_sound & NO embed_video_only (full default embed)',
+        src: `https://${WL}/embed/${name}/?campaign=${CAMPAIGN}&tour=${TOUR}&track=soundtest&mobileRedirect=auto`
+      },
+      {
+        title: 'Test 6: disable_sound=0 & embed_video_only=0 (explicit zeros)',
+        src: `https://${WL}/embed/${name}/?campaign=${CAMPAIGN}&tour=${TOUR}&track=soundtest&disable_sound=0&embed_video_only=0&mobileRedirect=auto`
+      }
+    ];
+
+    const container = document.getElementById('tests');
+    tests.forEach((t, i) => {
+      const div = document.createElement('div');
+      div.className = 'test-row';
+      div.innerHTML = `
+        <h3>${t.title}</h3>
+        <iframe
+          src="${t.src}"
+          style="width:640px;height:360px;"
+          allow="autoplay; encrypted-media; fullscreen; camera; microphone"
+          allowfullscreen frameborder="0"
+        ></iframe>
+        <div style="color:#666;font-size:11px;padding:2px 0;">${t.src}</div>
+      `;
+      container.appendChild(div);
+    });
+  })();
+</script>
+</body>
+</html>

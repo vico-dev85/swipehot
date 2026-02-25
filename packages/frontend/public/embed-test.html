@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Embed Test — Which Format Works?</title>
+<style>
+  body { margin:0; background:#0a0a0a; color:#fff; font-family:system-ui,sans-serif; padding:20px }
+  h2 { color:#e94f8a }
+  .controls { margin-bottom:20px; display:flex; gap:10px; align-items:center; flex-wrap:wrap }
+  input { padding:8px 12px; border-radius:6px; border:1px solid #333; background:#1a1a1a; color:#fff; font-size:14px; width:200px }
+  button { padding:8px 16px; border-radius:6px; border:none; background:#e94f8a; color:#fff; font-size:14px; cursor:pointer }
+  button:hover { background:#d13d78 }
+  .test { background:#151515; border:1px solid #222; border-radius:8px; padding:16px; margin-bottom:16px }
+  .test h4 { margin:0 0 4px; color:#e94f8a; font-size:14px }
+  .url { font-size:11px; color:#666; word-break:break-all; font-family:monospace; margin-bottom:8px }
+  .status { font-size:12px; padding:4px 8px; border-radius:4px; display:inline-block; margin-bottom:8px }
+  .loading { background:#333; color:#aaa }
+  .loaded { background:#1a3a1a; color:#4f4 }
+  .error { background:#3a1a1a; color:#f44 }
+  iframe { width:100%; height:400px; border:none; background:#000; border-radius:4px }
+  #log { background:#111; padding:12px; border-radius:6px; font-family:monospace; font-size:12px; color:#888; max-height:200px; overflow-y:auto; margin-top:20px; white-space:pre-wrap }
+</style>
+</head>
+<body>
+<h2>Embed Format Test</h2>
+
+<div class="controls">
+  <input type="text" id="username" placeholder="performer username">
+  <button onclick="fetchAndTest()">Fetch Online + Test All</button>
+  <button onclick="testAll()" style="background:#555">Test Current Username</button>
+</div>
+<div id="info" style="color:#888;font-size:13px;margin-bottom:15px"></div>
+
+<div id="tests"></div>
+<div id="log">Log output...\n</div>
+
+<script>
+function log(msg) {
+  const el = document.getElementById('log');
+  el.textContent += new Date().toLocaleTimeString() + ' ' + msg + '\n';
+  el.scrollTop = el.scrollHeight;
+}
+
+const CAMPAIGN = 'roGHG';
+const TOUR = '9oGW';
+
+function getFormats(user) {
+  return [
+    {
+      name: 'A: cams.swipe.hot /in/ (full params)',
+      url: `https://cams.swipe.hot/in/?tour=${TOUR}&campaign=${CAMPAIGN}&track=embed&room=${user}&disable_sound=1&mobileRedirect=auto&embed_video_only=1`
+    },
+    {
+      name: 'B: cams.swipe.hot /in/ (minimal)',
+      url: `https://cams.swipe.hot/in/?tour=${TOUR}&campaign=${CAMPAIGN}&room=${user}&disable_sound=1`
+    },
+    {
+      name: 'C: cams.swipe.hot /embed/ path',
+      url: `https://cams.swipe.hot/embed/${user}/?tour=${TOUR}&campaign=${CAMPAIGN}&disable_sound=1`
+    },
+    {
+      name: 'D: xcam.vip /in/ (full params)',
+      url: `https://www.xcam.vip/in/?tour=${TOUR}&campaign=${CAMPAIGN}&track=embed&room=${user}&disable_sound=1&mobileRedirect=auto&embed_video_only=1`
+    },
+    {
+      name: 'E: chatnights /in/ (full params)',
+      url: `https://www.chatnights.com/in/?tour=${TOUR}&campaign=${CAMPAIGN}&track=embed&room=${user}&disable_sound=1&mobileRedirect=auto&embed_video_only=1`
+    },
+    {
+      name: 'F: chaturbate.com /in/ (full params)',
+      url: `https://chaturbate.com/in/?tour=${TOUR}&campaign=${CAMPAIGN}&track=embed&room=${user}&disable_sound=1&mobileRedirect=auto&embed_video_only=1`
+    },
+    {
+      name: 'G: chaturbate.com /embed/ path',
+      url: `https://chaturbate.com/embed/${user}/?tour=${TOUR}&campaign=${CAMPAIGN}&disable_sound=1`
+    },
+    {
+      name: 'H: cbxyz.com /in/ (known working)',
+      url: `https://cbxyz.com/in/?tour=${TOUR}&campaign=${CAMPAIGN}&track=embed&room=${user}&disable_sound=1&mobileRedirect=auto&embed_video_only=1`
+    },
+  ];
+}
+
+async function fetchAndTest() {
+  log('Fetching online performer from API...');
+  try {
+    const sid = Math.random().toString(16).slice(2) + Math.random().toString(16).slice(2);
+    const res = await fetch('/api/pool-next.php?session_id=' + sid + '&gender=f');
+    if (!res.ok) {
+      // Try Fastify route
+      const res2 = await fetch('/api/pool/next?session_id=' + sid + '&gender=f');
+      if (!res2.ok) throw new Error('Both API routes failed');
+      var data = await res2.json();
+    } else {
+      var data = await res.json();
+    }
+    log('Got: ' + data.username + ' (' + data.num_users + ' viewers)');
+    log('API embed_url: ' + data.embed_url);
+    document.getElementById('username').value = data.username;
+    document.getElementById('info').textContent =
+      `Performer: ${data.display_name} (${data.username}) — ${data.num_users} viewers — Gender: ${data.gender}`;
+    testAll();
+  } catch(e) {
+    log('ERROR: ' + e.message);
+  }
+}
+
+function testAll() {
+  const user = document.getElementById('username').value.trim();
+  if (!user) { alert('Enter a username or click "Fetch Online"'); return; }
+
+  const formats = getFormats(user);
+  const container = document.getElementById('tests');
+  container.innerHTML = '';
+
+  log('Testing ' + formats.length + ' embed formats for: ' + user);
+
+  formats.forEach((fmt, i) => {
+    const div = document.createElement('div');
+    div.className = 'test';
+    div.innerHTML = `
+      <h4>${fmt.name}</h4>
+      <div class="url">${fmt.url}</div>
+      <div class="status loading" id="st-${i}">loading...</div><br>
+      <iframe id="fr-${i}" src="about:blank"
+        allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+        scrolling="no"></iframe>
+    `;
+    container.appendChild(div);
+
+    // Stagger loads
+    setTimeout(() => {
+      const fr = document.getElementById('fr-' + i);
+      const st = document.getElementById('st-' + i);
+      log('Loading ' + fmt.name + '...');
+
+      fr.onload = () => {
+        st.textContent = 'iframe onload fired — check if video plays above';
+        st.className = 'status loaded';
+        log(fmt.name + ': onload fired');
+      };
+      fr.onerror = () => {
+        st.textContent = 'LOAD ERROR';
+        st.className = 'status error';
+        log(fmt.name + ': ERROR');
+      };
+      fr.src = fmt.url;
+    }, i * 800);
+  });
+}
+</script>
+</body>
+</html>

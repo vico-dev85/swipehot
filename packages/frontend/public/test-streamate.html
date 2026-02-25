@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Streamate Test — Sound Roulette</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; background: #000; color: #fff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; overflow: hidden; }
+
+  #player { position: fixed; inset: 0; width: 100%; height: 100%; background: #111; }
+  #player iframe { width: 100%; height: 100%; border: none; }
+
+  #top-bar {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; background: linear-gradient(to bottom, rgba(0,0,0,0.7), transparent);
+  }
+  #top-bar .brand { font-size: 18px; font-weight: 900; }
+  #top-bar .brand .dot { color: #FE2C55; }
+  #top-bar .info { font-size: 13px; color: #aaa; text-align: right; }
+  #top-bar .info .sound-badge {
+    display: inline-block; background: #00F891; color: #000;
+    padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; margin-left: 6px;
+  }
+  #top-bar .info .no-sound { background: #555; color: #999; }
+
+  #controls {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+    padding: 16px; background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  #performer-info { font-size: 16px; font-weight: 600; }
+  #performer-info .name { font-size: 20px; }
+  #performer-info .meta { font-size: 13px; color: #aaa; margin-top: 4px; }
+
+  .btn-row { display: flex; gap: 8px; }
+  .btn {
+    flex: 1; padding: 12px 16px; border: none; border-radius: 12px;
+    font-size: 15px; font-weight: 700; cursor: pointer; transition: transform 0.15s;
+  }
+  .btn:active { transform: scale(0.95); }
+  .btn-next { background: #FE2C55; color: #fff; }
+  .btn-prev { background: rgba(255,255,255,0.15); color: #fff; flex: 0 0 auto; }
+  .btn-cta { background: #00F891; color: #000; }
+  .btn-refresh { background: rgba(255,200,0,0.9); color: #000; flex: 0 0 auto; }
+
+  #gender-filter { display: flex; gap: 6px; justify-content: center; margin-bottom: 2px; }
+  .gender-btn {
+    padding: 7px 14px; border: 1px solid rgba(255,255,255,0.2); border-radius: 20px;
+    background: transparent; color: #aaa; font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .gender-btn.active { background: #FE2C55; color: #fff; border-color: #FE2C55; }
+
+  #loading {
+    position: fixed; inset: 0; z-index: 200;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: #000; gap: 16px;
+  }
+  #loading .spinner {
+    width: 40px; height: 40px; border: 3px solid rgba(255,255,255,0.1);
+    border-top-color: #FE2C55; border-radius: 50%; animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #loading .text { color: #aaa; font-size: 14px; }
+  .hidden { display: none !important; }
+
+  #stats { position: fixed; top: 48px; right: 16px; z-index: 100; font-size: 11px; color: #666; text-align: right; }
+
+  #log-panel {
+    position: fixed; top: 0; right: 0; width: 380px; height: 100%; z-index: 300;
+    background: rgba(0,0,0,0.92); border-left: 1px solid #333;
+    display: none; flex-direction: column; font-family: 'Courier New', monospace; font-size: 11px;
+  }
+  #log-panel.show { display: flex; }
+  #log-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 12px; border-bottom: 1px solid #333; background: rgba(30,30,30,0.95);
+  }
+  #log-header span { font-weight: 700; font-size: 13px; }
+  #log-header button {
+    padding: 4px 10px; border: 1px solid #555; border-radius: 6px;
+    background: transparent; color: #aaa; font-size: 11px; cursor: pointer;
+  }
+  #log-header button:hover { background: #333; }
+  #log-content { flex: 1; overflow-y: auto; padding: 8px; line-height: 1.5; }
+  #log-content .log-entry { padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+  #log-content .log-time { color: #666; }
+  #log-content .log-performer { color: #FE2C55; font-weight: 700; }
+  #log-content .log-event { color: #00F891; }
+  #log-content .log-nav { color: #FFD740; }
+  #log-content .log-warn { color: #ff6b6b; }
+  #log-content .log-msg { color: #888; }
+
+  #log-toggle {
+    position: fixed; top: 12px; right: 60px; z-index: 100;
+    padding: 4px 10px; border: 1px solid rgba(255,255,255,0.2); border-radius: 8px;
+    background: rgba(0,0,0,0.6); color: #aaa; font-size: 11px; font-weight: 600; cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <div class="text">Loading Streamate performers...</div>
+</div>
+
+<div id="player"></div>
+
+<div id="top-bar">
+  <div class="brand">streamate<span class="dot">.</span>test</div>
+  <div class="info">
+    <span id="counter">0 / 0</span>
+    <span id="sound-badge" class="sound-badge">SOUND ON</span>
+  </div>
+</div>
+
+<button id="log-toggle" onclick="toggleLog()">LOG</button>
+<div id="stats"></div>
+
+<div id="log-panel">
+  <div id="log-header">
+    <span>Event Log</span>
+    <div>
+      <button onclick="copyLog()">Copy All</button>
+      <button onclick="clearLog()">Clear</button>
+      <button onclick="toggleLog()">X</button>
+    </div>
+  </div>
+  <div id="log-content"></div>
+</div>
+
+<div id="controls">
+  <div id="gender-filter">
+    <button class="gender-btn active" data-gender="f">Women</button>
+    <button class="gender-btn" data-gender="m">Men</button>
+    <button class="gender-btn" data-gender="t">Trans</button>
+    <button class="gender-btn" data-gender="c">Couples</button>
+  </div>
+  <div id="performer-info">
+    <div class="name" id="perf-name">-</div>
+    <div class="meta" id="perf-meta"></div>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-prev" onclick="prevPerformer()">Back</button>
+    <button class="btn btn-next" onclick="nextPerformer()">Next</button>
+    <button class="btn btn-refresh" onclick="refreshPool()">Refresh</button>
+    <button class="btn btn-prev" id="verify-btn" onclick="toggleVerify()" style="font-size:11px">V:ON</button>
+    <button class="btn btn-cta" onclick="openRoom()">Watch Live</button>
+  </div>
+</div>
+
+<script>
+const API_URL = '/api/streamate-pool.php';
+const SESSION_ID = 'sm_' + Math.random().toString(36).substring(2, 10);
+
+let performers = [];
+let currentIndex = -1;
+let currentGender = 'f';
+let loading = false;
+let currentPage = 1;
+let currentPerformerName = null;
+let performerLoadedAt = null;
+let verifyMode = true;
+
+// ========== EVENT LOG ==========
+const logEntries = [];
+const logContent = document.getElementById('log-content');
+const logPanel = document.getElementById('log-panel');
+
+function ts() {
+  const d = new Date();
+  return d.toTimeString().split(' ')[0] + '.' + String(d.getMilliseconds()).padStart(3,'0');
+}
+
+function addLog(type, text) {
+  const time = ts();
+  const performer = currentPerformerName || '-';
+  const raw = `[${time}] [${performer}] [${type}] ${text}`;
+  logEntries.push(raw);
+  console.log(raw);
+
+  const cls = type === 'EVENT' ? 'log-event' :
+              type === 'NAV' ? 'log-nav' :
+              type === 'WARN' ? 'log-warn' :
+              type === 'MSG' ? 'log-msg' : '';
+
+  const el = document.createElement('div');
+  el.className = 'log-entry';
+  el.innerHTML = `<span class="log-time">${time}</span> <span class="log-performer">${performer}</span> <span class="${cls}">[${type}]</span> ${escHtml(text)}`;
+  logContent.appendChild(el);
+  logContent.scrollTop = logContent.scrollHeight;
+}
+
+function escHtml(s) { return s.replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function toggleLog() { logPanel.classList.toggle('show'); }
+function clearLog() { logEntries.length = 0; logContent.innerHTML = ''; }
+
+function copyLog() {
+  const text = logEntries.join('\n');
+  navigator.clipboard.writeText(text).then(() => {
+    addLog('INFO', 'Log copied (' + logEntries.length + ' entries)');
+  }).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta);
+    ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta);
+    addLog('INFO', 'Log copied (fallback)');
+  });
+}
+
+// ========== DOM REFS ==========
+const playerEl = document.getElementById('player');
+const loadingEl = document.getElementById('loading');
+const counterEl = document.getElementById('counter');
+const soundBadge = document.getElementById('sound-badge');
+const perfName = document.getElementById('perf-name');
+const perfMeta = document.getElementById('perf-meta');
+const statsEl = document.getElementById('stats');
+
+// ========== GENDER FILTER ==========
+document.querySelectorAll('.gender-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.gender-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentGender = btn.dataset.gender;
+    performers = [];
+    currentIndex = -1;
+    currentPage = 1;
+    addLog('NAV', `Gender changed to: ${currentGender}`);
+    fetchPerformers();
+  });
+});
+
+// ========== KEYBOARD + TOUCH ==========
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); nextPerformer(); }
+  if (e.key === 'ArrowLeft') { e.preventDefault(); prevPerformer(); }
+  if (e.key === 'Enter') { e.preventDefault(); openRoom(); }
+  if (e.key === 'l' || e.key === 'L') { toggleLog(); }
+});
+
+let touchStartY = 0;
+document.addEventListener('touchstart', (e) => { touchStartY = e.touches[0].clientY; }, { passive: true });
+document.addEventListener('touchend', (e) => {
+  const dy = touchStartY - e.changedTouches[0].clientY;
+  if (Math.abs(dy) > 50) {
+    if (dy > 0) nextPerformer();
+    else prevPerformer();
+  }
+}, { passive: true });
+
+// ========== STREAMATE postMessage LISTENER ==========
+window.addEventListener('message', (event) => {
+  const raw = event.data;
+  const origin = event.origin || '';
+  if (origin === window.location.origin) return;
+
+  try {
+    if (typeof raw === 'string') {
+      try {
+        const parsed = JSON.parse(raw);
+        addLog('MSG', `origin=${origin} json=${JSON.stringify(parsed)}`);
+      } catch(e) {
+        addLog('MSG', `origin=${origin} str="${raw.substring(0, 300)}"`);
+      }
+    } else if (typeof raw === 'object' && raw !== null) {
+      addLog('MSG', `origin=${origin} obj=${JSON.stringify(raw)}`);
+    } else {
+      addLog('MSG', `origin=${origin} type=${typeof raw} val=${String(raw).substring(0,200)}`);
+    }
+  } catch(e) {
+    addLog('MSG', `origin=${origin} [unparseable]`);
+  }
+});
+
+// ========== FETCH PERFORMERS ==========
+async function fetchPerformers(replace) {
+  if (loading) return;
+  loading = true;
+  if (currentIndex === -1) loadingEl.classList.remove('hidden');
+
+  try {
+    const pg = replace ? 1 : currentPage;
+    const v = verifyMode ? '&verify=1' : '';
+    const url = `${API_URL}?gender=${currentGender}&count=50&page=${pg}&session_id=${SESSION_ID}${v}`;
+    addLog('NAV', `Fetching... verify=${verifyMode}`);
+    const res = await fetch(url);
+    const data = await res.json();
+
+    if (data.error) {
+      addLog('WARN', 'API error: ' + data.error);
+      loadingEl.querySelector('.text').textContent = 'Error: ' + data.error;
+      return;
+    }
+
+    if (data.performers && data.performers.length > 0) {
+      const extra = `cache:${data.from_cache ? 'hit' : 'fresh'} seen_skipped:${data.seen_filtered || 0}`;
+
+      if (replace) {
+        const oldName = currentPerformerName;
+        performers = data.performers;
+        currentPage = 1;
+        addLog('EVENT', `Pool refreshed: ${data.performers.length} (total: ${data.total}) ${extra}`);
+
+        if (oldName) {
+          const newIdx = performers.findIndex(p => p.name === oldName);
+          if (newIdx >= 0) {
+            currentIndex = newIdx;
+            addLog('INFO', `${oldName} still in pool at #${newIdx}`);
+          } else {
+            addLog('WARN', `${oldName} gone from pool`);
+            currentIndex = 0;
+            showPerformer();
+          }
+        }
+      } else {
+        performers = performers.concat(data.performers);
+        addLog('EVENT', `+${data.performers.length} loaded (pool: ${performers.length}, total: ${data.total}) ${extra}`);
+
+        if (currentIndex === -1) {
+          currentIndex = 0;
+          showPerformer();
+        }
+      }
+      statsEl.textContent = `Pool: ${performers.length} | Total: ${data.total}`;
+    } else {
+      addLog('WARN', 'No performers found');
+      if (currentIndex === -1) loadingEl.querySelector('.text').textContent = 'No performers found';
+    }
+  } catch (err) {
+    addLog('WARN', 'Fetch error: ' + err.message);
+    if (currentIndex === -1) loadingEl.querySelector('.text').textContent = 'Network error';
+  } finally {
+    loading = false;
+    if (performers.length > 0) loadingEl.classList.add('hidden');
+  }
+}
+
+// ========== REFRESH POOL ==========
+function refreshPool() {
+  addLog('NAV', '--- MANUAL REFRESH ---');
+  loading = false;
+  fetchPerformers(true);
+}
+
+// ========== SHOW PERFORMER ==========
+function showPerformer() {
+  if (currentIndex < 0 || currentIndex >= performers.length) return;
+
+  const p = performers[currentIndex];
+  currentPerformerName = p.name;
+  performerLoadedAt = Date.now();
+
+  const aud = p.free_chat_audio ? 'free' : p.audio ? 'pvt' : 'none';
+  addLog('NAV', `Show #${currentIndex}: ${p.name} (audio:${aud} HD:${p.is_hd})`);
+
+  perfName.textContent = p.name;
+  const parts = [];
+  if (p.age) parts.push(`Age ${p.age}`);
+  if (p.ethnicity) parts.push(p.ethnicity);
+  if (p.hair_color) parts.push(p.hair_color + ' hair');
+  if (p.is_hd) parts.push('HD');
+  if (p.language) parts.push(p.language);
+  perfMeta.textContent = parts.join(' · ');
+
+  if (p.free_chat_audio) {
+    soundBadge.textContent = 'SOUND ON';
+    soundBadge.className = 'sound-badge';
+  } else if (p.audio) {
+    soundBadge.textContent = 'AUDIO (pvt)';
+    soundBadge.className = 'sound-badge no-sound';
+  } else {
+    soundBadge.textContent = 'NO AUDIO';
+    soundBadge.className = 'sound-badge no-sound';
+  }
+
+  counterEl.textContent = `${currentIndex + 1} / ${performers.length}`;
+
+  playerEl.innerHTML = `<iframe
+    src="${p.embed_url}"
+    allow="autoplay; encrypted-media; fullscreen"
+    allowfullscreen
+  ></iframe>`;
+
+  if (currentIndex >= performers.length - 10 && !loading) {
+    currentPage++;
+    fetchPerformers();
+  }
+}
+
+// ========== NAVIGATION ==========
+function nextPerformer() {
+  if (currentPerformerName) {
+    const sec = ((Date.now() - performerLoadedAt) / 1000).toFixed(1);
+    addLog('NAV', `Leave ${currentPerformerName} (${sec}s)`);
+  }
+  if (currentIndex < performers.length - 1) {
+    currentIndex++;
+    showPerformer();
+  } else if (!loading) {
+    currentPage++;
+    fetchPerformers();
+  }
+}
+
+function prevPerformer() {
+  if (currentPerformerName) {
+    const sec = ((Date.now() - performerLoadedAt) / 1000).toFixed(1);
+    addLog('NAV', `Back from ${currentPerformerName} (${sec}s)`);
+  }
+  if (currentIndex > 0) {
+    currentIndex--;
+    showPerformer();
+  }
+}
+
+function openRoom() {
+  if (currentIndex < 0 || currentIndex >= performers.length) return;
+  const p = performers[currentIndex];
+  addLog('EVENT', `CTA: ${p.name}`);
+  window.open(`https://streamate.com/cam/${encodeURIComponent(p.name)}?AFNO=2-11174.888`, '_blank');
+}
+
+// ========== VERIFY TOGGLE ==========
+function toggleVerify() {
+  verifyMode = !verifyMode;
+  document.getElementById('verify-btn').textContent = verifyMode ? 'V:ON' : 'V:OFF';
+  document.getElementById('verify-btn').style.background = verifyMode ? 'rgba(0,248,145,0.3)' : 'rgba(255,255,255,0.15)';
+  addLog('EVENT', `Verify: ${verifyMode ? 'ON' : 'OFF'}`);
+}
+document.getElementById('verify-btn').style.background = 'rgba(0,248,145,0.3)';
+
+// ========== START ==========
+addLog('INFO', `Session: ${SESSION_ID} | Verify: ON | Press L for log`);
+fetchPerformers();
+</script>
+</body>
+</html>

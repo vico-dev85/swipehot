@@ -27,10 +27,9 @@ async function fetchModelsForCategory(category: CategoryDef) {
   let params: any[];
 
   if (category.genderFilter) {
-    // Gender-based pages (gay, trans): use keywords.cb_data gender field
-    // We'll filter in JS since gender is inside JSON
-    whereClause = '1=1';
-    params = [];
+    // Gender-based pages (gay, trans): filter by gender column directly
+    whereClause = 'm.gender = ?';
+    params = [category.genderFilter];
   } else if (allTags.length === 0) {
     // No tags (shouldn't happen, but safety)
     return [];
@@ -60,12 +59,12 @@ async function fetchModelsForCategory(category: CategoryDef) {
      FROM models m
      WHERE m.status != 'removed' AND ${whereClause}
      ORDER BY m.avg_viewers_7d DESC
-     LIMIT 100`,
+     LIMIT 200`,
     params
   );
 
   // Get current viewer counts from keywords table (latest cb_data)
-  const viewerMap = new Map<string, { viewers: number; age: number | null; gender: string; country: string; tags: string[]; imageUrl: string; isNew: boolean }>();
+  const viewerMap = new Map<string, { viewers: number; age: number | null; gender: string; country: string; tags: string[]; imageUrl: string; isNew: boolean; roomSubject: string; secondsOnline: number; numFollowers: number }>();
   if (rows.length > 0) {
     const usernames = rows.map(r => r.model_name);
     const placeholders = usernames.map(() => '?').join(',');
@@ -75,7 +74,7 @@ async function fetchModelsForCategory(category: CategoryDef) {
     );
     for (const kw of kwRows) {
       try {
-        const data = JSON.parse(kw.cb_data);
+        const data = typeof kw.cb_data === 'string' ? JSON.parse(kw.cb_data) : kw.cb_data;
         viewerMap.set(kw.keyword, {
           viewers: data.num_users || 0,
           age: data.age || null,
@@ -84,6 +83,9 @@ async function fetchModelsForCategory(category: CategoryDef) {
           tags: data.tags || [],
           imageUrl: data.image_url || '',
           isNew: data.is_new || false,
+          roomSubject: data.room_subject || '',
+          secondsOnline: data.seconds_online || 0,
+          numFollowers: data.num_followers || 0,
         });
       } catch {}
     }
@@ -105,23 +107,8 @@ async function fetchModelsForCategory(category: CategoryDef) {
     }
   }
 
-  // Filter gender-based pages
-  let filteredRows = rows;
-  if (category.genderFilter) {
-    filteredRows = rows.filter(r => {
-      const kwData = viewerMap.get(r.model_name);
-      if (!kwData) {
-        // Check tags for gender hints
-        const tags = parseTags(r.tags);
-        return category.secondaryTags.some(t => tags.includes(t.toLowerCase()));
-      }
-      return kwData.gender === category.genderFilter ||
-        category.secondaryTags.some(t => kwData.tags.map(tt => tt.toLowerCase()).includes(t.toLowerCase()));
-    });
-  }
-
   // Assemble model data for scoring
-  return filteredRows.map(r => {
+  return rows.map(r => {
     const kwData = viewerMap.get(r.model_name);
     const tags = kwData?.tags || parseTags(r.tags);
     const firstSeen = r.first_seen_at ? new Date(r.first_seen_at) : new Date();
@@ -142,7 +129,9 @@ async function fetchModelsForCategory(category: CategoryDef) {
       screenshotPath: r.screenshot_local_path,
       bioCached: r.bio_cached,
       country: kwData?.country || '',
-      numFollowers: r.num_followers || 0,
+      numFollowers: kwData?.numFollowers || r.num_followers || 0,
+      roomSubject: kwData?.roomSubject || '',
+      secondsOnline: kwData?.secondsOnline || 0,
     };
   });
 }
@@ -169,7 +158,8 @@ export async function buildCategoryPage(
     // Fetch and score models
     const modelData = await fetchModelsForCategory(category);
     const allTags = [...category.primaryTags, ...category.secondaryTags];
-    const scoredModels = rankModelsForCategory(modelData, allTags);
+    const allScored = rankModelsForCategory(modelData, allTags);
+    const scoredModels = allScored.slice(0, 20); // Top 20 after scoring
 
     if (scoredModels.length === 0) {
       return {

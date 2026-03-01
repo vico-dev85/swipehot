@@ -20,15 +20,18 @@ echo "========================================"
 echo "[HEAVY] $(date '+%Y-%m-%d %H:%M:%S')"
 echo "========================================"
 
-# 1. Collect 1500 models with screenshots and mini-bios
-echo "[HEAVY] Step 1: Collect models + screenshots + bios"
+# 1. Collect models with fill-categories + screenshots + bios + micro-descriptions
+echo "[HEAVY] Step 1: Collect models (fill-categories + screenshots + bios + descriptions)"
 npx tsx src/cli/index.ts collect \
+  --fill-categories \
   --count 1500 \
   --screenshots \
   --bios \
-  --bio-batch 100
+  --bio-batch 100 \
+  --descriptions \
+  --desc-batch 100
 
-# 2. Build all 22 listicle pages
+# 2. Build all 25 listicle pages
 echo "[HEAVY] Step 2: Build all listicle pages"
 npx tsx src/cli/index.ts build-pages
 

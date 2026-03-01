@@ -1,4 +1,4 @@
-// Category definitions for the 22 living listicle pages.
+// Category definitions for the 25 living listicle pages.
 // Each category maps to a URL slug, CB API tags, page title, and SEO metadata.
 // Source: assistant/final-page-list.md (cleaned from 56K keywords)
 
@@ -10,6 +10,7 @@ export interface CategoryDef {
   primaryTags: string[];     // CB API tags to match (OR logic — match ANY)
   secondaryTags: string[];   // Synonym/related tags (also matched)
   genderFilter?: string;     // CB API gender param (f, m, t, c) — used instead of tags for some pages
+  topByFollowers?: boolean;  // If true, ignore tags — rank ALL models by followers (for "most popular" page)
   nsfwLevel: 'safe' | 'nsfw'; // safe = Claude API, nsfw = ArliAI API for intro text
   combinedVolume: number;    // Estimated monthly search volume
 }
@@ -227,16 +228,6 @@ export const CATEGORIES: CategoryDef[] = [
     combinedVolume: 2370,
   },
   {
-    slug: 'femboy-cams',
-    title: 'Hottest Femboy Cam Models Live Now',
-    metaTitle: 'Femboy Cam Models — Live Femboy Cams Free',
-    metaDescription: 'Watch the hottest femboy cam models streaming live. Ranked by viewer count and community votes. Free to watch, updated every 30 minutes.',
-    primaryTags: ['femboy'],
-    secondaryTags: ['sissy', 'femme'],
-    nsfwLevel: 'safe',
-    combinedVolume: 2000,
-  },
-  {
     slug: 'trans-cams',
     title: 'Hottest Trans Cam Models Live Now',
     metaTitle: 'Trans Cam Models — Live Trans Cams Free',
@@ -268,37 +259,6 @@ export const CATEGORIES: CategoryDef[] = [
     combinedVolume: 1500,
   },
   {
-    slug: 'muscle-cams',
-    title: 'Hottest Muscle Cam Models Live Now',
-    metaTitle: 'Muscle Cam Models — Live Muscle Cams Free',
-    metaDescription: 'Watch the hottest muscle and fit cam models streaming live. Ranked by viewer count and community votes. Free, updated every 30 minutes.',
-    primaryTags: ['muscle'],
-    secondaryTags: ['fit', 'muscles', 'athletic'],
-    nsfwLevel: 'safe',
-    combinedVolume: 1200,
-  },
-  {
-    slug: 'twink-cams',
-    title: 'Hottest Twink Cam Models Live Now',
-    metaTitle: 'Twink Cam Models — Live Twink Cams Free',
-    metaDescription: 'Watch the hottest twink cam models streaming live. Young slim male performers ranked by viewers and community votes. Free, updated every 30 minutes.',
-    primaryTags: ['twink'],
-    secondaryTags: ['skinnyboy', 'youngboy'],
-    genderFilter: 'm',
-    nsfwLevel: 'safe',
-    combinedVolume: 1500,
-  },
-  {
-    slug: 'new-cams',
-    title: 'New Cam Models Streaming Live Now',
-    metaTitle: 'New Cam Models — Fresh & Undiscovered Cams Free',
-    metaDescription: 'Discover new and fresh cam models streaming live for the first time. Undiscovered performers ranked by viewers and votes. Updated every 30 minutes.',
-    primaryTags: ['new'],
-    secondaryTags: [],
-    nsfwLevel: 'safe',
-    combinedVolume: 1000,
-  },
-  {
     slug: 'petite-cams',
     title: 'Hottest Petite Cam Models Live Now',
     metaTitle: 'Petite Cam Models — Live Petite Cams Free',
@@ -307,6 +267,17 @@ export const CATEGORIES: CategoryDef[] = [
     secondaryTags: ['skinny', 'slim', 'smalltits'],
     nsfwLevel: 'safe',
     combinedVolume: 665,
+  },
+  {
+    slug: 'most-popular-cams',
+    title: 'Most Popular Cam Models — Top Performers Right Now',
+    metaTitle: 'Most Popular Cam Models — Top Chaturbate Performers 2026',
+    metaDescription: 'The most popular cam models on Chaturbate right now. Top 50 performers ranked by followers, viewer count, and consistency. Updated daily.',
+    primaryTags: [],
+    secondaryTags: [],
+    topByFollowers: true,
+    nsfwLevel: 'safe',
+    combinedVolume: 4000,
   },
 ];
 

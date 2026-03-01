@@ -26,7 +26,11 @@ async function fetchModelsForCategory(category: CategoryDef) {
   let whereClause: string;
   let params: any[];
 
-  if (category.genderFilter) {
+  if (category.topByFollowers) {
+    // "Most Popular" page: ALL models, ranked by followers — no tag filter
+    whereClause = 'm.num_followers > 0';
+    params = [];
+  } else if (category.genderFilter) {
     // Gender-based pages (gay, trans): filter by gender column directly
     whereClause = 'm.gender = ?';
     params = [category.genderFilter];
@@ -50,16 +54,17 @@ async function fetchModelsForCategory(category: CategoryDef) {
     num_followers: number;
     avg_viewers_7d: number;
     bio_cached: string | null;
+    micro_description: string | null;
     screenshot_local_path: string | null;
     first_seen_at: string;
   }>(
     `SELECT m.model_name, m.display_name, m.tags, m.is_currently_online,
-            m.num_followers, m.avg_viewers_7d, m.bio_cached, m.screenshot_local_path,
+            m.num_followers, m.avg_viewers_7d, m.bio_cached, m.micro_description, m.screenshot_local_path,
             m.first_seen_at
      FROM models m
      WHERE m.status != 'removed' AND ${whereClause}
-     ORDER BY m.avg_viewers_7d DESC
-     LIMIT 200`,
+     ORDER BY ${category.topByFollowers ? 'm.num_followers DESC' : 'm.avg_viewers_7d DESC'}
+     LIMIT ${category.topByFollowers ? 500 : 200}`,
     params
   );
 
@@ -128,6 +133,7 @@ async function fetchModelsForCategory(category: CategoryDef) {
       imageUrl: kwData?.imageUrl || '',
       screenshotPath: r.screenshot_local_path,
       bioCached: r.bio_cached,
+      microDescription: r.micro_description,
       country: kwData?.country || '',
       numFollowers: kwData?.numFollowers || r.num_followers || 0,
       roomSubject: kwData?.roomSubject || '',
@@ -159,7 +165,8 @@ export async function buildCategoryPage(
     const modelData = await fetchModelsForCategory(category);
     const allTags = [...category.primaryTags, ...category.secondaryTags];
     const allScored = rankModelsForCategory(modelData, allTags);
-    const scoredModels = allScored.slice(0, 20); // Top 20 after scoring
+    const pageSize = category.topByFollowers ? 50 : 20;
+    const scoredModels = allScored.slice(0, pageSize);
 
     if (scoredModels.length === 0) {
       return {
@@ -172,11 +179,35 @@ export async function buildCategoryPage(
       };
     }
 
+    // Fetch category content (LLM-generated intro, FAQ, links)
+    const catContentRows = await query<{
+      intro_text: string | null;
+      faq_json: string | null;
+      internal_links_text: string | null;
+    }>(
+      'SELECT intro_text, faq_json, internal_links_text FROM category_content WHERE category_slug = ?',
+      [slug]
+    );
+    const catContent = catContentRows.length > 0 ? catContentRows[0] : null;
+
+    let faqItems: Array<{ question: string; answer: string }> = [];
+    if (catContent?.faq_json) {
+      try {
+        const raw = typeof catContent.faq_json === 'string' ? JSON.parse(catContent.faq_json) : catContent.faq_json;
+        if (Array.isArray(raw)) faqItems = raw;
+      } catch {}
+    }
+
     // Render HTML
     const html = await renderListiclePage(config, {
       category,
       models: scoredModels,
       lastUpdated: new Date(),
+      categoryContent: {
+        introText: catContent?.intro_text || null,
+        faqItems,
+        internalLinksText: catContent?.internal_links_text || null,
+      },
     });
 
     // Write file

@@ -46,9 +46,10 @@ import { loadConfig, type AIProvider } from '../config.js';
 import { initDb, query, execute, closeDb } from '../db.js';
 import { getTopModels, fetchOnlineRooms, downloadScreenshot, type CBRoom } from '../services/chaturbate.js';
 import { generateModelPage, generateBatch } from '../generators/model-page.js';
-import { generateMiniBio } from '../services/claude.js';
+import { generateMiniBio, generateCategoryIntro } from '../services/claude.js';
 import { generateSitemap } from '../seo/sitemap.js';
 import { buildAllPages } from '../builders/listicle-builder.js';
+import { CATEGORIES } from '../categories.js';
 import { generateBlogPost, generateBlogBatch, rebuildBlogLinks } from '../generators/blog-post.js';
 import { BLOG_QUEUE, type BlogType } from '../blog/blog-types.js';
 
@@ -268,6 +269,8 @@ program
   .option('--screenshots', 'Download model screenshots locally', false)
   .option('--bios', 'Generate 50-80 word mini-bios for models missing them', false)
   .option('--bio-batch <n>', 'Max mini-bios to generate per run (to control API costs)', '50')
+  .option('--descriptions', 'Generate micro-descriptions (listicle spotlights) for models missing them', false)
+  .option('--desc-batch <n>', 'Max micro-descriptions to generate per run', '50')
   .option('--output <dir>', 'Output directory for screenshots', '')
   .action(async (opts) => {
     const config = loadConfig();
@@ -450,7 +453,7 @@ program
 
       for (const row of needBios) {
         try {
-          const cbData = JSON.parse(row.cb_data) as CBRoom;
+          const cbData = (typeof row.cb_data === 'string' ? JSON.parse(row.cb_data) : row.cb_data) as CBRoom;
           const miniBio = await generateMiniBio(config, row.keyword, cbData);
           await execute(
             `UPDATE models SET bio_cached = ?, bio_generated_at = NOW() WHERE model_name = ?`,
@@ -462,6 +465,48 @@ program
           }
         } catch (err) {
           console.warn(`[bio] Failed for ${row.keyword}: ${(err as Error).message}`);
+        }
+      }
+    }
+
+    // Generate micro-descriptions for listicle cards (if --descriptions flag)
+    // Smart priority: only generate for models likely to appear in listicle top-20s
+    // Uses: is_currently_online (1000 bonus), num_followers (log scale), avg_viewers_7d
+    let descriptionsGenerated = 0;
+    if (opts.descriptions) {
+      const descBatch = parseInt(opts.descBatch, 10);
+      console.log(`[collect] Generating micro-descriptions (max ${descBatch}, smart priority)...`);
+
+      // Find models most likely to appear in listicles: online + high followers + high avg viewers
+      const needDescs = await query<{ keyword: string; cb_data: string }>(
+        `SELECT k.keyword, k.cb_data FROM keywords k
+         JOIN models m ON m.model_name = k.keyword
+         WHERE k.cb_data IS NOT NULL AND (m.micro_description IS NULL OR m.micro_description = '')
+         ORDER BY (m.is_currently_online * 1000) + COALESCE(LOG10(GREATEST(m.num_followers, 1)) * 50, 0) + COALESCE(m.avg_viewers_7d, 0) DESC
+         LIMIT ?`,
+        [descBatch]
+      );
+
+      console.log(`[collect] Found ${needDescs.length} models needing descriptions (prioritized by listicle rank)`);
+
+      // Assign round-robin angles so models in the same batch get different angles
+      const { getRandomAngle } = await import('../services/claude.js');
+      for (let i = 0; i < needDescs.length; i++) {
+        const row = needDescs[i];
+        try {
+          const cbData = (typeof row.cb_data === 'string' ? JSON.parse(row.cb_data) : row.cb_data) as CBRoom;
+          const angle = getRandomAngle(i);
+          const miniBio = await generateMiniBio(config, row.keyword, cbData, angle);
+          await execute(
+            `UPDATE models SET micro_description = ? WHERE model_name = ?`,
+            [miniBio.text, row.keyword]
+          );
+          descriptionsGenerated++;
+          if (descriptionsGenerated % 10 === 0) {
+            console.log(`[collect] Generated ${descriptionsGenerated}/${needDescs.length} micro-descriptions...`);
+          }
+        } catch (err) {
+          console.warn(`[desc] Failed for ${row.keyword}: ${(err as Error).message}`);
         }
       }
     }
@@ -487,6 +532,9 @@ program
     const withBios = await query<{ cnt: number }>(
       "SELECT COUNT(*) as cnt FROM models WHERE bio_cached IS NOT NULL AND bio_cached != ''"
     );
+    const withDescs = await query<{ cnt: number }>(
+      "SELECT COUNT(*) as cnt FROM models WHERE micro_description IS NOT NULL AND micro_description != ''"
+    );
     const withScreenshots = await query<{ cnt: number }>(
       "SELECT COUNT(*) as cnt FROM models WHERE screenshot_local_path IS NOT NULL"
     );
@@ -497,7 +545,9 @@ program
     console.log(`  Total models in DB: ${totalModels[0]?.cnt ?? 0}`);
     if (opts.screenshots) console.log(`  Screenshots downloaded: ${screenshotsDownloaded}`);
     if (opts.bios) console.log(`  Mini-bios generated: ${biosGenerated}`);
+    if (opts.descriptions) console.log(`  Micro-descriptions generated: ${descriptionsGenerated}`);
     console.log(`  Models with bios: ${withBios[0]?.cnt ?? 0}`);
+    console.log(`  Models with micro-descriptions: ${withDescs[0]?.cnt ?? 0}`);
     console.log(`  Models with screenshots: ${withScreenshots[0]?.cnt ?? 0}`);
     await closeDb();
   });
@@ -567,6 +617,9 @@ program
     const withBios = await query<{ cnt: number }>(
       "SELECT COUNT(*) as cnt FROM models WHERE bio_cached IS NOT NULL AND bio_cached != ''"
     );
+    const withDescriptions = await query<{ cnt: number }>(
+      "SELECT COUNT(*) as cnt FROM models WHERE micro_description IS NOT NULL AND micro_description != ''"
+    ).catch(() => [{ cnt: 0 }]);
     const withScreenshots = await query<{ cnt: number }>(
       "SELECT COUNT(*) as cnt FROM models WHERE screenshot_local_path IS NOT NULL"
     );
@@ -579,12 +632,17 @@ program
     const totalSnapshots = await query<{ cnt: number }>(
       "SELECT COUNT(DISTINCT model_username) as cnt FROM daily_snapshots"
     ).catch(() => [{ cnt: 0 }]);
+    const catContent = await query<{ cnt: number }>(
+      "SELECT COUNT(*) as cnt FROM category_content WHERE intro_text IS NOT NULL"
+    ).catch(() => [{ cnt: 0 }]);
     const recentBuilds = await query<{ category_slug: string; models_count: number; created_at: string }>(
       "SELECT category_slug, models_count, created_at FROM page_builds ORDER BY created_at DESC LIMIT 5"
     ).catch(() => []);
 
     console.log('\n--- Living Listicle Data ---');
     console.log(`  Models with mini-bios: ${withBios[0]?.cnt ?? 0}`);
+    console.log(`  Models with micro-descriptions: ${withDescriptions[0]?.cnt ?? 0}`);
+    console.log(`  Category intros generated: ${catContent[0]?.cnt ?? 0}/25`);
     console.log(`  Models with screenshots: ${withScreenshots[0]?.cnt ?? 0}`);
     console.log(`  Currently online: ${onlineNow[0]?.cnt ?? 0}`);
     console.log(`  Total user votes: ${totalVotes[0]?.cnt ?? 0}`);
@@ -732,7 +790,7 @@ program
     const outputDir = opts.output || join(PKG_ROOT, '..', 'frontend', 'public');
     const slug = opts.category || undefined;
 
-    console.log(`[build] Building listicle pages${slug ? ` (${slug} only)` : ' (all 22 categories)'}...`);
+    console.log(`[build] Building listicle pages${slug ? ` (${slug} only)` : ' (all 25 categories)'}...`);
     console.log(`[build] Output: ${outputDir}`);
 
     const results = await buildAllPages(config, outputDir, slug);
@@ -837,6 +895,145 @@ program
 
     const updated = await rebuildBlogLinks(config, opts.output);
     console.log(`[blog-links] Done: ${updated} blog posts updated with fresh links`);
+
+    await closeDb();
+  });
+
+// ─── generate-category-content ──────────────────────────────────────────────
+
+// Load top keywords per category from tier3-categories.csv
+async function loadCategoryKeywords(): Promise<Map<string, string[]>> {
+  const csvPath = join(PKG_ROOT, 'data', 'processed', 'tier3-categories.csv');
+  const map = new Map<string, string[]>();
+
+  try {
+    const content = await readFile(csvPath, 'utf-8');
+    const lines = content.split('\n');
+    // Skip header
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i].split(',');
+      const keyword = cols[0]?.trim();
+      if (!keyword) continue;
+      const source = cols[7]?.trim() || '';
+
+      // Match keywords to categories by slug pattern in the source filename or keyword content
+      for (const cat of CATEGORIES) {
+        const slugBase = cat.slug.replace(/-cams$/, '');
+        const allTags = [...cat.primaryTags, ...cat.secondaryTags];
+
+        // Match if keyword contains any of the category's tags
+        const kwLower = keyword.toLowerCase();
+        const matches = allTags.some(t => kwLower.includes(t.toLowerCase()));
+        if (matches) {
+          if (!map.has(cat.slug)) map.set(cat.slug, []);
+          const arr = map.get(cat.slug)!;
+          if (!arr.includes(keyword) && arr.length < 20) {
+            arr.push(keyword);
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.warn(`[cat-content] Could not load tier3-categories.csv: ${(err as Error).message}`);
+  }
+
+  return map;
+}
+
+program
+  .command('generate-category-content')
+  .description('Generate LLM intro text, FAQs, and internal links for category pages')
+  .option('--category <slug>', 'Generate for a specific category (default: all)')
+  .option('--provider <provider>', 'AI provider: claude, arli, or openai')
+  .option('--force', 'Overwrite existing content', false)
+  .action(async (opts) => {
+    const config = loadConfig(opts.provider as AIProvider | undefined);
+    const dbReady = await initDb(config);
+    if (!dbReady) {
+      console.error('ERROR: generate-category-content requires a MySQL connection.');
+      process.exit(1);
+    }
+
+    const categories = opts.category
+      ? CATEGORIES.filter(c => c.slug === opts.category)
+      : CATEGORIES;
+
+    if (opts.category && categories.length === 0) {
+      console.error(`ERROR: Unknown category slug: ${opts.category}`);
+      process.exit(1);
+    }
+
+    console.log(`[cat-content] Loading keyword data...`);
+    const keywordMap = await loadCategoryKeywords();
+
+    console.log(`[cat-content] Generating content for ${categories.length} categories...`);
+    console.log(`[cat-content] Provider: ${config.aiProvider}\n`);
+
+    let generated = 0;
+    let skipped = 0;
+    let failed = 0;
+
+    for (const cat of categories) {
+      // Check if content already exists (skip unless --force)
+      if (!opts.force) {
+        const existing = await query<{ intro_text: string | null }>(
+          'SELECT intro_text FROM category_content WHERE category_slug = ?',
+          [cat.slug]
+        );
+        if (existing.length > 0 && existing[0].intro_text && existing[0].intro_text.length > 50) {
+          console.log(`  [SKIP] ${cat.slug} — content already exists (use --force to overwrite)`);
+          skipped++;
+          continue;
+        }
+      }
+
+      try {
+        const topKeywords = keywordMap.get(cat.slug) || [];
+        const allTags = [...cat.primaryTags, ...cat.secondaryTags];
+
+        // Pick 4 related categories for internal linking
+        const relatedSlugs = CATEGORIES
+          .filter(c => c.slug !== cat.slug)
+          .slice(0, 4)
+          .map(c => c.slug);
+
+        console.log(`  [GEN] ${cat.slug} — ${topKeywords.length} keywords, volume ~${cat.combinedVolume.toLocaleString()}...`);
+
+        const result = await generateCategoryIntro(
+          config,
+          cat.slug,
+          cat.title,
+          allTags,
+          cat.combinedVolume,
+          topKeywords,
+          relatedSlugs,
+        );
+
+        // Upsert into category_content table
+        await execute(
+          `INSERT INTO category_content (category_slug, intro_text, faq_json, internal_links_text, generated_at)
+           VALUES (?, ?, ?, ?, NOW())
+           ON DUPLICATE KEY UPDATE
+             intro_text = VALUES(intro_text),
+             faq_json = VALUES(faq_json),
+             internal_links_text = VALUES(internal_links_text),
+             generated_at = NOW()`,
+          [cat.slug, result.introText, JSON.stringify(result.faqItems), result.internalLinksText]
+        );
+
+        const faqCount = result.faqItems?.length || 0;
+        console.log(`  [OK] ${cat.slug} — intro ${result.introText.length} chars, ${faqCount} FAQs`);
+        generated++;
+      } catch (err) {
+        console.error(`  [FAIL] ${cat.slug} — ${(err as Error).message}`);
+        failed++;
+      }
+    }
+
+    console.log(`\n[cat-content] === Summary ===`);
+    console.log(`  Generated: ${generated}`);
+    console.log(`  Skipped: ${skipped} (already exist)`);
+    console.log(`  Failed: ${failed}`);
 
     await closeDb();
   });

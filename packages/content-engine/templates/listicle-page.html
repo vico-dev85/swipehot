@@ -121,6 +121,8 @@
         line-height: 1.7;
         max-width: 700px;
       }
+      .hero-description p { margin-bottom: 12px; }
+      .hero-description p:last-child { margin-bottom: 0; }
 
       /* ---- Model Card List ---- */
       .model-list-heading {
@@ -198,10 +200,19 @@
         border: 1px solid rgba(254, 44, 85, 0.3);
         border-radius: 6px;
       }
-      /* Card dims when offline */
+      /* Card dims when offline, then collapses after delay */
       .model-card.went-offline {
         opacity: 0.35;
         transition: opacity 1s ease 0.5s, transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+      }
+      .model-card.hiding-offline {
+        opacity: 0;
+        max-height: 0;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        pointer-events: none;
+        transition: opacity 0.6s ease, max-height 0.6s ease 0.3s, margin 0.6s ease 0.3s;
       }
 
       /* ---- Came online / back online pulse ---- */
@@ -613,6 +624,77 @@
         transform: translateY(-1px);
       }
 
+      /* ---- FAQ Section ---- */
+      .faq-section {
+        padding: 32px 0;
+        border-top: 1px solid rgba(255, 255, 255, 0.06);
+      }
+      .faq-section h2 {
+        font-size: 20px;
+        font-weight: 700;
+        color: #fff;
+        margin-bottom: 16px;
+      }
+      .faq-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .faq-item {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 12px;
+        overflow: hidden;
+        transition: border-color 0.2s;
+      }
+      .faq-item[open] {
+        border-color: rgba(255, 255, 255, 0.12);
+      }
+      .faq-question {
+        padding: 16px 20px;
+        font-size: 15px;
+        font-weight: 600;
+        color: #ddd;
+        cursor: pointer;
+        list-style: none;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .faq-question::-webkit-details-marker { display: none; }
+      .faq-question::after {
+        content: '+';
+        font-size: 20px;
+        font-weight: 400;
+        color: #666;
+        flex-shrink: 0;
+        transition: transform 0.2s;
+      }
+      .faq-item[open] .faq-question::after {
+        content: '\2212';
+      }
+      .faq-answer {
+        padding: 0 20px 16px;
+        font-size: 14px;
+        color: #aaa;
+        line-height: 1.7;
+      }
+
+      /* ---- Internal Links ---- */
+      .internal-links-section {
+        padding: 20px 0 8px;
+      }
+      .internal-links-text {
+        font-size: 14px;
+        color: #999;
+        line-height: 1.7;
+      }
+      .internal-links-text a {
+        color: #FE2C55;
+        font-weight: 500;
+      }
+
       /* ---- Roulette CTA section ---- */
       .roulette-section {
         text-align: center;
@@ -737,7 +819,7 @@
         <span>&middot;</span>
         <span>Updated {{lastUpdated}}</span>
       </div>
-      <p class="hero-description">{{categoryDescription}}</p>
+      <div class="hero-description">{{categoryDescription}}</div>
     </header>
 
     <!-- Model Cards -->
@@ -747,6 +829,11 @@
         {{modelCards}}
       </div>
     </section>
+
+    <!-- FAQ Section (LLM-generated, FAQPage schema in head) -->
+    {{faqSection}}
+
+    {{internalLinks}}
 
     <!-- Related Categories -->
     <section class="related-section">
@@ -1077,8 +1164,9 @@
 
             // --- CAME ONLINE animation ---
             if (wasOffline) {
-              article.classList.remove('went-offline');
+              article.classList.remove('went-offline', 'hiding-offline');
               article.style.opacity = '';
+              article.style.maxHeight = '';
               article.classList.add('came-online');
               showOverlay(card, 'online', 'BACK ONLINE');
               removeOverlay(card, 2500);
@@ -1113,18 +1201,23 @@
             var vBadge = offCard.querySelector('.badge-viewers');
             if (vBadge) vBadge.style.display = 'none';
 
-            // --- WENT OFFLINE animation ---
+            // --- WENT OFFLINE animation: dim → hide after 5s ---
             if (wasOnline) {
               showOverlay(offCard, 'offline', 'WENT OFFLINE');
-              // Show overlay for 2.5s, then dim card
               (function(article, mediaEl) {
                 setTimeout(function() {
                   article.classList.add('went-offline');
                 }, 800);
                 removeOverlay(mediaEl, 3000);
+                // Collapse and hide after 5s
+                setTimeout(function() {
+                  article.classList.add('hiding-offline');
+                }, 5000);
               })(offArticle, offCard);
             } else {
+              // Already offline on page load — hide immediately
               offArticle.classList.add('went-offline');
+              offArticle.classList.add('hiding-offline');
             }
           }
         }
